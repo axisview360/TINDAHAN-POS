@@ -192,6 +192,15 @@
   .empty-row td{text-align:center; padding:24px; color:#a3907a; font-style:italic;}
 
   .search-bar{display:flex; gap:8px; margin-bottom:12px;}
+  .alpha-filter{display:flex; flex-wrap:wrap; gap:5px; margin-bottom:14px;}
+  .alpha-btn{
+    min-width:32px; height:32px; padding:0 8px;
+    font-family:'Bangers',cursive; font-size:13px; letter-spacing:0.02em;
+    background:var(--paper); border:2px solid var(--ink); border-radius:8px;
+    cursor:pointer; box-shadow:2px 2px 0 var(--ink); transition:transform 0.08s;
+  }
+  .alpha-btn:hover{transform:translate(1px,1px); box-shadow:1px 1px 0 var(--ink);}
+  .alpha-btn.active{background:var(--blue); color:#fff;}
   .search-bar input{flex:1; padding:9px 10px; border:2px solid var(--ink); border-radius:10px; font-family:'Poppins',sans-serif;}
 
   .sell-picker{display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:14px;}
@@ -400,6 +409,36 @@
       </div>
       <div class="search-bar" style="margin-top:14px;">
         <input type="text" id="product-search" placeholder="Search product...">
+      </div>
+      <div class="alpha-filter no-print" id="alpha-filter">
+        <button class="alpha-btn active" data-letter="all">Lahat</button>
+        <button class="alpha-btn" data-letter="A">A</button>
+        <button class="alpha-btn" data-letter="B">B</button>
+        <button class="alpha-btn" data-letter="C">C</button>
+        <button class="alpha-btn" data-letter="D">D</button>
+        <button class="alpha-btn" data-letter="E">E</button>
+        <button class="alpha-btn" data-letter="F">F</button>
+        <button class="alpha-btn" data-letter="G">G</button>
+        <button class="alpha-btn" data-letter="H">H</button>
+        <button class="alpha-btn" data-letter="I">I</button>
+        <button class="alpha-btn" data-letter="J">J</button>
+        <button class="alpha-btn" data-letter="K">K</button>
+        <button class="alpha-btn" data-letter="L">L</button>
+        <button class="alpha-btn" data-letter="M">M</button>
+        <button class="alpha-btn" data-letter="N">N</button>
+        <button class="alpha-btn" data-letter="O">O</button>
+        <button class="alpha-btn" data-letter="P">P</button>
+        <button class="alpha-btn" data-letter="Q">Q</button>
+        <button class="alpha-btn" data-letter="R">R</button>
+        <button class="alpha-btn" data-letter="S">S</button>
+        <button class="alpha-btn" data-letter="T">T</button>
+        <button class="alpha-btn" data-letter="U">U</button>
+        <button class="alpha-btn" data-letter="V">V</button>
+        <button class="alpha-btn" data-letter="W">W</button>
+        <button class="alpha-btn" data-letter="X">X</button>
+        <button class="alpha-btn" data-letter="Y">Y</button>
+        <button class="alpha-btn" data-letter="Z">Z</button>
+        <button class="alpha-btn" data-letter="#">#</button>
       </div>
       <div style="overflow-x:auto;">
       <table>
@@ -793,13 +832,33 @@
   }
 
   // ---------- products table ----------
+  let selectedLetter = 'all';
+
+  document.querySelectorAll('.alpha-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      selectedLetter = btn.dataset.letter;
+      document.querySelectorAll('.alpha-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('product-search').value = '';
+      renderProducts();
+    });
+  });
+
   function renderProducts(){
     const q = document.getElementById('product-search').value.trim().toLowerCase();
     const tbody = document.getElementById('products-tbody');
-    const list = products.filter(p=>p.name.toLowerCase().includes(q))
-                          .sort((a,b)=>a.name.localeCompare(b.name));
+    let list = products.filter(p=>p.name.toLowerCase().includes(q));
+    if(selectedLetter !== 'all'){
+      if(selectedLetter === '#'){
+        list = list.filter(p=>!/^[a-zA-Z]/.test(p.name));
+      } else {
+        list = list.filter(p=>p.name.toUpperCase().startsWith(selectedLetter));
+      }
+    }
+    list = list.sort((a,b)=>a.name.localeCompare(b.name));
     if(list.length === 0){
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Walang produkto.</td></tr>';
+      const msg = selectedLetter !== 'all' ? `Walang produktong nagsisimula sa "${selectedLetter}".` : 'Walang produkto.';
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="6">${msg}</td></tr>`;
       return;
     }
     tbody.innerHTML = list.map(p=>{
