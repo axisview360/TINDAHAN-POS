@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tindahan POS</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Poppins:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap');
+
+  :root{
+    --bg:#FFD93D;
+    --paper:#FFFDF6;
+    --ink:#171213;
+    --red:#EE3F32;
+    --red-dark:#B9291F;
+    --blue:#2F6FED;
+    --green:#2CAE6B;
+    --mustard:#FFC93C;
+    --purple:#8B5CF6;
+    --border:#EFE2B8;
+    --danger:#EE3F32;
+    --shadow: 5px 5px 0 var(--ink);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    background-image: radial-gradient(rgba(23,18,19,0.14) 1.6px, transparent 1.6px);
+    background-size:18px 18px;
+    color:var(--ink);
+    font-family:'Poppins',sans-serif;
+    min-height:100vh;
+  }
+  h1,h2,h3{font-family:'Bangers',cursive; letter-spacing:0.03em; margin:0; font-weight:400;}
+  .mono{font-family:'Space Mono',monospace;}
+
+  header.top{
+    background:var(--red);
+    color:#fff;
+    padding:20px 20px 26px;
+    position:relative;
+    overflow:hidden;
+    border-bottom:7px solid var(--ink);
+  }
+  header.top::after{
+    content:"";
+    position:absolute; inset:0;
+    background-image: radial-gradient(rgba(255,255,255,0.16) 2px, transparent 2px);
+    background-size:18px 18px;
+    pointer-events:none;
+  }
+  header.top .brand{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; position:relative; z-index:1;}
+  header.top h1{font-size:36px; text-transform:uppercase; text-shadow:3px 3px 0 var(--ink);}
+  header.top .tagline{
+    font-size:11px; font-family:'Space Mono',monospace; text-transform:none;
+    background:rgba(0,0,0,0.22); padding:4px 10px; border-radius:999px;
+  }
+  header.top .date{
+    position:absolute; top:20px; right:20px; z-index:1;
+    font-family:'Space Mono',monospace; font-size:12px; background:var(--ink); color:#fff;
+    padding:6px 12px; border-radius:999px; border:2px solid #fff;
+  }
+
+  .pricecheck{
+    max-width:1100px; margin:-18px auto 0; padding:0 20px; position:relative; z-index:2;
+  }
+  .pricecheck-box{
+    background:var(--mustard);
+    border:4px solid var(--ink);
+    border-radius:16px;
+    box-shadow:var(--shadow);
+    padding:12px 16px;
+    display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+  }
+  .pricecheck-box input{
+    flex:1; min-width:180px;
+    border:3px solid var(--ink);
+    border-radius:10px;
+    padding:10px 12px;
+    font-size:15px;
+    font-family:'Poppins',sans-serif;
+    background:var(--paper);
+  }
+  .pricecheck-box label{font-family:'Bangers',cursive; font-size:16px; text-transform:uppercase; white-space:nowrap;}
+  .pricecheck-results{display:flex; gap:16px; flex-wrap:wrap; margin-top:18px;}
+
+  /* ---- signature: speech-bubble price cards ---- */
+  .price-card{
+    background:var(--paper); border:3px solid var(--ink); border-radius:16px 16px 16px 4px;
+    padding:10px 14px; min-width:150px;
+    box-shadow:4px 4px 0 var(--ink);
+    position:relative;
+  }
+  .price-card::before{
+    content:""; position:absolute; left:14px; bottom:-13px;
+    border:8px solid transparent; border-top-color:var(--ink); border-bottom:0;
+  }
+  .price-card::after{
+    content:""; position:absolute; left:17px; bottom:-8px;
+    border:6px solid transparent; border-top-color:var(--paper); border-bottom:0;
+  }
+  .price-card .pname{font-weight:700; font-size:13.5px; margin-bottom:3px;}
+  .price-card .pprice{font-family:'Space Mono',monospace; font-weight:700; font-size:21px; color:var(--red);}
+  .price-card .pstock{font-size:11.5px; color:#6b5c47; margin-top:2px;}
+  .price-card.low .pstock{color:var(--danger); font-weight:700;}
+  .price-card .pupdate-btn{
+    margin-top:7px; font-family:'Bangers',cursive; font-size:11px; letter-spacing:0.02em; text-transform:uppercase;
+    background:var(--blue); color:#fff; border:2px solid var(--ink); border-radius:8px;
+    padding:4px 10px; cursor:pointer;
+  }
+  .price-card .pupdate-btn:hover{background:var(--ink);}
+  .price-card .pedit-row{margin-top:7px; display:flex; gap:5px; align-items:center;}
+  .price-card .pedit-row input{
+    width:80px; padding:5px 6px; border:2px solid var(--ink); border-radius:8px;
+    font-family:'Space Mono',monospace; font-size:13px;
+  }
+  .price-card .pedit-row button{
+    font-family:'Bangers',cursive; font-size:11px; letter-spacing:0.02em; text-transform:uppercase;
+    border:2px solid var(--ink); border-radius:8px; padding:5px 9px; cursor:pointer;
+  }
+  .price-card .pedit-save{background:var(--green); color:#fff;}
+  .price-card .pedit-cancel{background:var(--paper);}
+
+  /* ---- starburst low-stock badge ---- */
+  .stock-badge{
+    display:inline-block; margin-left:6px; padding:2px 9px;
+    background:var(--red); color:#fff; font-family:'Bangers',cursive; font-size:11px; letter-spacing:0.02em;
+    clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+    transform:rotate(-6deg); padding-bottom:5px;
+  }
+
+  nav.tabs{
+    max-width:1100px; margin:20px auto 0; padding:0 20px;
+    display:flex; gap:10px; flex-wrap:wrap;
+  }
+  nav.tabs button{
+    font-family:'Bangers',cursive; font-size:15px; letter-spacing:0.02em; text-transform:uppercase;
+    background:var(--paper); border:3px solid var(--ink); border-radius:12px 12px 5px 5px;
+    padding:10px 18px;
+    cursor:pointer; box-shadow:4px 4px 0 var(--ink);
+    transition:transform 0.1s;
+  }
+  nav.tabs button:nth-child(odd){transform:rotate(-1.2deg);}
+  nav.tabs button:nth-child(even){transform:rotate(1.2deg);}
+  nav.tabs button:hover{transform:translate(2px,2px) rotate(0deg); box-shadow:2px 2px 0 var(--ink);}
+  nav.tabs button.active{background:var(--blue); color:#fff; transform:translate(2px,2px) rotate(0deg); box-shadow:2px 2px 0 var(--ink);}
+
+  main{max-width:1100px; margin:0 auto; padding:20px 20px 60px;}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  .panel{
+    background:var(--paper); border:3px solid var(--ink); border-radius:18px;
+    padding:20px; margin-bottom:20px; box-shadow:var(--shadow);
+  }
+  .panel h2{font-size:20px; text-transform:uppercase; margin-bottom:14px; color:var(--red);}
+
+  .form-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px;}
+  .field label{display:block; font-size:11px; text-transform:uppercase; font-weight:700; margin-bottom:5px; color:#6b5c47;}
+  .field input{
+    width:100%; padding:9px 10px; border:2px solid var(--ink); border-radius:10px;
+    font-family:'Space Mono',monospace; font-size:14px; background:var(--paper);
+  }
+  .field input:focus{outline:none; box-shadow:0 0 0 3px rgba(47,111,237,0.35); border-color:var(--blue);}
+  .profit-preview{
+    grid-column:1/-1; font-family:'Space Mono',monospace; font-size:13px;
+    background:#FFF5D6; border:2px dashed var(--ink); padding:9px 12px; border-radius:10px;
+  }
+  .profit-preview strong{color:var(--green);}
+
+  .btn{
+    font-family:'Bangers',cursive; font-size:15px; letter-spacing:0.02em; text-transform:uppercase;
+    border:3px solid var(--ink); padding:10px 20px; cursor:pointer; border-radius:12px;
+    background:var(--green); color:#fff; box-shadow:4px 4px 0 var(--ink);
+    transition:transform 0.08s;
+  }
+  .btn:hover{transform:translate(2px,2px); box-shadow:2px 2px 0 var(--ink);}
+  .btn.red{background:var(--red);}
+  .btn.outline{background:var(--paper); color:var(--ink);}
+  .btn.small{padding:6px 12px; font-size:12px; box-shadow:3px 3px 0 var(--ink); border-radius:9px;}
+  .btn:disabled{opacity:0.4; cursor:not-allowed;}
+  .row-actions{margin-top:12px; display:flex; gap:10px;}
+
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th,td{padding:10px 8px; text-align:left; border-bottom:2px dashed var(--border);}
+  th{font-family:'Bangers',cursive; font-size:13px; letter-spacing:0.02em; text-transform:uppercase; color:#fff; background:var(--ink); border-bottom:none;}
+  th:first-child{border-radius:8px 0 0 0;}
+  th:last-child{border-radius:0 8px 0 0;}
+  td.num, th.num{text-align:right; font-family:'Space Mono',monospace;}
+  tr.low-stock td{color:var(--danger);}
+  .empty-row td{text-align:center; padding:24px; color:#a3907a; font-style:italic;}
+
+  .search-bar{display:flex; gap:8px; margin-bottom:12px;}
+  .search-bar input{flex:1; padding:9px 10px; border:2px solid var(--ink); border-radius:10px; font-family:'Poppins',sans-serif;}
+
+  .sell-picker{display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:14px;}
+  .sell-picker .field{min-width:200px; flex:1;}
+  .sell-search-wrap{position:relative;}
+  .sell-suggestions{
+    position:absolute; top:100%; left:0; right:0; z-index:10; margin-top:4px;
+    background:var(--paper); border:3px solid var(--ink); border-radius:12px;
+    max-height:220px; overflow-y:auto; box-shadow:4px 4px 0 var(--ink);
+    display:none;
+  }
+  .sell-suggestions.show{display:block;}
+  .sell-suggestion-item{
+    padding:10px 12px; cursor:pointer; border-bottom:2px dashed var(--border);
+    display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:13.5px;
+  }
+  .sell-suggestion-item:first-child{border-radius:9px 9px 0 0;}
+  .sell-suggestion-item:last-child{border-bottom:none; border-radius:0 0 9px 9px;}
+  .sell-suggestion-item:hover, .sell-suggestion-item.active{background:var(--mustard);}
+  .sell-suggestion-item .sname{font-weight:600;}
+  .sell-suggestion-item .sinfo{font-family:'Space Mono',monospace; font-size:12px; color:#6b5c47; white-space:nowrap;}
+  .sell-suggestion-empty{padding:10px 12px; color:#a3907a; font-style:italic; font-size:13px;}
+  select{width:100%; padding:9px 10px; border:2px solid var(--ink); border-radius:10px; font-family:'Poppins',sans-serif; background:var(--paper);}
+  .sell-summary{background:#FFF5D6; border:2px dashed var(--ink); padding:12px; border-radius:12px; margin-bottom:12px; font-family:'Space Mono',monospace; font-size:14px;}
+  .sell-summary .total{color:var(--red); font-size:18px; font-weight:700;}
+
+  .totals-strip{display:flex; gap:14px; flex-wrap:wrap; margin-top:14px;}
+  .totals-strip .stat{color:#fff; padding:11px 18px; border-radius:12px; border:3px solid var(--ink); box-shadow:4px 4px 0 rgba(0,0,0,0.25); background:var(--ink);}
+  .totals-strip .stat:nth-child(1){background:var(--purple);}
+  .totals-strip .stat:nth-child(2){background:var(--blue);}
+  .totals-strip .stat:nth-child(3){background:var(--green);}
+  .totals-strip .stat .label{font-size:10px; text-transform:uppercase; opacity:0.85;}
+  .totals-strip .stat .val{font-family:'Space Mono',monospace; font-size:18px; font-weight:700;}
+
+  .report-controls{display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-bottom:14px;}
+
+  #report-output{display:none;}
+  #report-output.show{display:block;}
+  .receipt{
+    background:var(--paper); border:1px solid #ccc;
+    padding:22px; font-family:'Space Mono',monospace; font-size:12.5px;
+  }
+  .receipt-header{text-align:center; border-bottom:2px dashed var(--ink); padding-bottom:12px; margin-bottom:12px;}
+  .receipt-header h2{font-family:'Bangers',cursive; font-size:24px; color:var(--ink); letter-spacing:0.03em;}
+  .receipt table{font-size:12px;}
+  .receipt th{border-bottom:1px solid var(--ink); color:var(--ink); background:none; font-family:'Space Mono',monospace; text-transform:none;}
+  .receipt-totals{border-top:2px dashed var(--ink); margin-top:10px; padding-top:10px;}
+  .receipt-totals div{display:flex; justify-content:space-between; padding:3px 0;}
+  .receipt-totals .grand{font-weight:700; font-size:15px; color:var(--red); border-top:1px solid var(--ink); margin-top:6px; padding-top:8px;}
+
+  .toolbar-right{display:flex; gap:8px; margin-left:auto;}
+  .flex-between{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;}
+
+  /* ---- speech-bubble toast (same signature motif) ---- */
+  .toast{
+    position:fixed; bottom:24px; right:24px; background:var(--paper); color:var(--ink);
+    padding:14px 20px; border:3px solid var(--ink); border-radius:16px 16px 4px 16px;
+    font-family:'Poppins',sans-serif; font-weight:600; font-size:13.5px; max-width:280px;
+    box-shadow:5px 5px 0 var(--ink);
+    opacity:0; transform:translateY(10px) scale(0.9);
+    transition:all 0.25s cubic-bezier(.34,1.56,.64,1); pointer-events:none; z-index:99;
+  }
+  .toast.show{opacity:1; transform:translateY(0) scale(1);}
+
+  input[type=file]{display:none;}
+
+  .sync-status{
+    display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:6px 12px;
+    border-radius:999px; background:#FFF5D6; border:2px dashed var(--ink); font-family:'Space Mono',monospace;
+  }
+  .sync-dot{width:9px; height:9px; border-radius:50%; background:#a3907a;}
+  .sync-dot.ok{background:var(--green);}
+  .sync-dot.err{background:var(--danger);}
+  .sync-help{font-size:12px; color:#6b5c47; line-height:1.6; margin-top:6px;}
+  .sync-help ol{margin:6px 0 0 18px; padding:0;}
+  .sync-help code{background:#FFF5D6; padding:1px 5px; border-radius:4px; font-family:'Space Mono',monospace;}
+
+  @media print{
+    body{background:#fff;}
+    body *{visibility:hidden;}
+    header.top,.pricecheck,nav.tabs,.report-controls,.no-print{display:none !important;}
+    #report-output, #report-output *{visibility:visible;}
+    #report-output{position:absolute; top:0; left:0; width:100%; display:block !important;}
+    @page{size:A4; margin:16mm;}
+    .receipt{border:none; padding:0;}
+  }
+
+  /* ---------- Tablet & phone ---------- */
+  @media (max-width:900px){
+    main{padding:16px 14px 60px;}
+    .pricecheck{padding:0 14px;}
+    nav.tabs{padding:0 14px;}
+  }
+
+  @media (max-width:768px){
+    .btn, select, .field input, .search-bar input, .pricecheck-box input, #fb-config-input{
+      min-height:44px;
+    }
+    .btn{padding:11px 16px; font-size:14px;}
+    nav.tabs{gap:8px;}
+    nav.tabs button{padding:12px 14px; flex:1 1 auto; min-width:44%; transform:none !important;}
+    .sell-picker{flex-direction:column; align-items:stretch;}
+    .sell-picker .field{min-width:0;}
+    .sell-btn, #sell-btn{width:100%;}
+    table{font-size:12.5px;}
+    th,td{padding:10px 6px;}
+  }
+
+  @media (max-width:600px){
+    header.top h1{font-size:26px;}
+    .date{position:static; display:inline-block; margin-top:8px;}
+    .row-actions{flex-direction:column;}
+    .row-actions .btn{width:100%;}
+    .toolbar-right{width:100%; flex-wrap:wrap;}
+    .toolbar-right .btn{flex:1;}
+    .totals-strip{flex-direction:column;}
+    .totals-strip .stat{width:100%;}
+  }
+
+  @media (max-width:420px){
+    .form-grid{grid-template-columns:1fr;}
+    nav.tabs button{min-width:100%;}
+    .price-card{min-width:100%;}
+    header.top h1{font-size:22px;}
+    .pricecheck-box{flex-direction:column; align-items:stretch;}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <h1>Tindahan POS</h1>
+    <span class="tagline">// sari-sari store inventory &amp; sales</span>
+  </div>
+  <div class="date mono" id="today-date"></div>
+</header>
+
+<div class="pricecheck">
+  <div class="pricecheck-box">
+    <label for="pricecheck-input">Presyo Check</label>
+    <input id="pricecheck-input" type="text" placeholder="Type a product name to check price and stock...">
+  </div>
+  <div class="pricecheck-results" id="pricecheck-results"></div>
+</div>
+
+<nav class="tabs">
+  <button data-view="products" class="active">Mga Produkto</button>
+  <button data-view="sell">Magbenta</button>
+  <button data-view="today">Benta Ngayon</button>
+  <button data-view="report">Buwanang Ulat</button>
+  <button data-view="sync">Firebase Sync</button>
+</nav>
+
+<main>
+
+  <!-- PRODUCTS VIEW -->
+  <section class="view active" id="view-products">
+    <div class="panel">
+      <h2 id="product-form-title">Magdagdag ng Produkto</h2>
+      <form id="product-form">
+        <input type="hidden" id="product-id">
+        <div class="form-grid">
+          <div class="field">
+            <label>Product Name</label>
+            <input type="text" id="f-name" required autocomplete="off">
+          </div>
+          <div class="field">
+            <label>Wholesale Price (₱)</label>
+            <input type="number" id="f-wholesale" step="0.01" min="0" required>
+          </div>
+          <div class="field">
+            <label>Selling Price (₱)</label>
+            <input type="number" id="f-selling" step="0.01" min="0" required>
+          </div>
+          <div class="field">
+            <label>Quantity</label>
+            <input type="number" id="f-qty" step="1" min="0" required>
+          </div>
+          <div class="profit-preview">Profit per unit: <strong id="f-profit-preview">₱0.00</strong></div>
+        </div>
+        <div class="row-actions">
+          <button type="submit" class="btn" id="product-submit-btn">Save Product</button>
+          <button type="button" class="btn outline" id="product-cancel-btn" style="display:none;">Cancel Edit</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="panel">
+      <div class="flex-between">
+        <h2 style="margin-bottom:0;">Listahan ng Produkto</h2>
+        <div class="toolbar-right no-print">
+          <button class="btn small outline" id="export-btn">Export Backup</button>
+          <button class="btn small outline" id="import-btn">Import Backup</button>
+          <input type="file" id="import-file" accept="application/json">
+        </div>
+      </div>
+      <div class="search-bar" style="margin-top:14px;">
+        <input type="text" id="product-search" placeholder="Search product...">
+      </div>
+      <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th class="num">Wholesale</th>
+            <th class="num">Selling</th>
+            <th class="num">Profit/Unit</th>
+            <th class="num">Qty</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="products-tbody"></tbody>
+      </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- SELL VIEW -->
+  <section class="view" id="view-sell">
+    <div class="panel">
+      <h2>Magbenta ng Produkto</h2>
+      <div class="sell-picker">
+        <div class="field sell-search-wrap">
+          <label>Product</label>
+          <input type="text" id="sell-search-input" placeholder="I-type ang pangalan ng produkto..." autocomplete="off">
+          <div class="sell-suggestions" id="sell-suggestions"></div>
+        </div>
+        <div class="field" style="max-width:120px;">
+          <label>Quantity</label>
+          <input type="number" id="sell-qty" min="1" value="1">
+        </div>
+        <button class="btn" id="sell-btn">Ibenta</button>
+      </div>
+      <div class="sell-summary" id="sell-summary">Pumili ng produkto para makita ang presyo.</div>
+    </div>
+  </section>
+
+  <!-- TODAY VIEW -->
+  <section class="view" id="view-today">
+    <div class="panel">
+      <div class="flex-between">
+        <h2 style="margin-bottom:0;">Mga Naibenta Ngayon (<span id="today-date-label"></span>)</h2>
+      </div>
+      <div style="overflow-x:auto; margin-top:14px;">
+      <table>
+        <thead>
+          <tr>
+            <th>Oras</th>
+            <th>Produkto</th>
+            <th class="num">Qty</th>
+            <th class="num">Presyo/unit</th>
+            <th class="num">Kita (Revenue)</th>
+            <th class="num">Profit</th>
+          </tr>
+        </thead>
+        <tbody id="today-tbody"></tbody>
+      </table>
+      </div>
+      <div class="totals-strip" id="today-totals"></div>
+    </div>
+  </section>
+
+  <!-- REPORT VIEW -->
+  <section class="view" id="view-report">
+    <div class="panel">
+      <h2>Buwanang Ulat (Monthly Report)</h2>
+      <div class="report-controls">
+        <div class="field">
+          <label>Piliin ang Buwan</label>
+          <input type="month" id="report-month">
+        </div>
+        <button class="btn" id="generate-report-btn">Generate Report</button>
+        <button class="btn outline" id="print-report-btn" disabled>Print (A4)</button>
+      </div>
+      <div id="report-output">
+        <div class="receipt" id="receipt-content"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SYNC VIEW -->
+  <section class="view" id="view-sync">
+    <div class="panel">
+      <div class="flex-between">
+        <h2 style="margin-bottom:0;">Firebase Sync</h2>
+        <div class="sync-status" id="sync-status-box">
+          <span class="sync-dot" id="sync-dot"></span>
+          <span id="sync-status-text">Hindi konektado</span>
+        </div>
+      </div>
+      <p class="sync-help">
+        I-paste dito ang buong <code>firebaseConfig</code> na kinopya mo mula sa Firebase Console
+        (Project Settings &gt; General &gt; Your apps &gt; SDK setup and configuration). Kapag naka-connect,
+        awtomatikong mag-sync ang mga produkto at benta sa lahat ng device mo — phone, tablet, o computer.
+      </p>
+      <div class="field" style="margin-top:10px;">
+        <label>Firebase Config</label>
+        <textarea id="fb-config-input" rows="7" style="width:100%; padding:10px; border:1.5px solid var(--border); border-radius:3px; font-family:'Space Mono',monospace; font-size:12px; background:var(--cream);" placeholder='const firebaseConfig = {&#10;  apiKey: "...",&#10;  authDomain: "...",&#10;  projectId: "...",&#10;  storageBucket: "...",&#10;  messagingSenderId: "...",&#10;  appId: "..."&#10;};'></textarea>
+      </div>
+      <div class="row-actions">
+        <button class="btn" id="fb-connect-btn">Kumonekta</button>
+        <button class="btn outline" id="fb-disconnect-btn">Idiskonekta</button>
+      </div>
+      <p class="sync-help" id="fb-last-sync"></p>
+    </div>
+  </section>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+(function(){
+  const LS_PRODUCTS = 'tindahanPOS_products';
+  const LS_SALES = 'tindahanPOS_sales';
+  const LS_FB_CONFIG = 'tindahanPOS_fbConfig';
+  const PESO = n => '₱' + Number(n).toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const LOW_STOCK_THRESHOLD = 5;
+
+  let products = JSON.parse(localStorage.getItem(LS_PRODUCTS) || '[]');
+  let sales = JSON.parse(localStorage.getItem(LS_SALES) || '[]');
+  let fbDb = null, fbReady = false, unsubProducts = null, unsubSales = null;
+
+  function saveProducts(){ localStorage.setItem(LS_PRODUCTS, JSON.stringify(products)); }
+  function saveSales(){ localStorage.setItem(LS_SALES, JSON.stringify(sales)); }
+
+  function toast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(()=>t.classList.remove('show'), 2200);
+  }
+
+  function todayStr(d){
+    const dt = d ? new Date(d) : new Date();
+    return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+  }
+
+  // ---------- Firebase sync ----------
+  function setSyncStatus(state, text){
+    const dot = document.getElementById('sync-dot');
+    const txt = document.getElementById('sync-status-text');
+    dot.className = 'sync-dot' + (state==='ok' ? ' ok' : state==='err' ? ' err' : '');
+    txt.textContent = text;
+  }
+
+  function parseFirebaseConfig(raw){
+    const start = raw.indexOf('{');
+    const end = raw.lastIndexOf('}');
+    if(start === -1 || end === -1) throw new Error('walang config na nakita');
+    return (new Function('return (' + raw.slice(start, end+1) + ')'))();
+  }
+
+  function attachFirestoreListeners(){
+    if(unsubProducts) unsubProducts();
+    if(unsubSales) unsubSales();
+    unsubProducts = fbDb.collection('products').onSnapshot(snap=>{
+      products = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      saveProducts();
+      renderProducts(); renderSellSelect(); renderPriceCheck();
+      document.getElementById('fb-last-sync').textContent = 'Huling sync: ' + new Date().toLocaleTimeString('en-PH');
+    }, ()=> setSyncStatus('err','Sync error (products)'));
+    unsubSales = fbDb.collection('sales').onSnapshot(snap=>{
+      sales = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      saveSales();
+      renderToday();
+      document.getElementById('fb-last-sync').textContent = 'Huling sync: ' + new Date().toLocaleTimeString('en-PH');
+    }, ()=> setSyncStatus('err','Sync error (sales)'));
+  }
+
+  function connectFirebase(config, silent){
+    try{
+      if(firebase.apps.length) firebase.app().delete().catch(()=>{});
+      firebase.initializeApp(config);
+      fbDb = firebase.firestore();
+      fbDb.enablePersistence().catch(()=>{});
+      fbReady = true;
+      localStorage.setItem(LS_FB_CONFIG, JSON.stringify(config));
+      attachFirestoreListeners();
+      setSyncStatus('ok', 'Naka-connect sa Firebase');
+      if(!silent) toast('Nakakonekta sa Firebase!');
+    }catch(err){
+      fbReady = false;
+      setSyncStatus('err', 'Error: ' + err.message);
+      if(!silent) toast('Hindi makakonekta: ' + err.message);
+    }
+  }
+
+  async function pushFullDatasetToFirebase(){
+    if(!fbReady) return;
+    try{
+      const pSnap = await fbDb.collection('products').get();
+      let batch = fbDb.batch();
+      pSnap.docs.forEach(d=>batch.delete(d.ref));
+      await batch.commit();
+      const sSnap = await fbDb.collection('sales').get();
+      batch = fbDb.batch();
+      sSnap.docs.forEach(d=>batch.delete(d.ref));
+      await batch.commit();
+
+      batch = fbDb.batch();
+      products.forEach(p=>{ const {id, ...rest} = p; batch.set(fbDb.collection('products').doc(id), rest); });
+      sales.forEach(s=>{ const {id, ...rest} = s; batch.set(fbDb.collection('sales').doc(id), rest); });
+      await batch.commit();
+      toast('Na-sync sa Firebase ang na-import na data.');
+    }catch(err){
+      toast('Firebase sync error: ' + err.message);
+    }
+  }
+
+  document.getElementById('fb-connect-btn').addEventListener('click', ()=>{
+    const raw = document.getElementById('fb-config-input').value.trim();
+    if(!raw){ toast('I-paste muna ang Firebase config.'); return; }
+    try{
+      connectFirebase(parseFirebaseConfig(raw), false);
+    }catch(err){
+      toast('Hindi ma-parse ang config. Siguraduhing kumpleto ang pinaste.');
+    }
+  });
+  document.getElementById('fb-disconnect-btn').addEventListener('click', ()=>{
+    localStorage.removeItem(LS_FB_CONFIG);
+    if(unsubProducts) unsubProducts();
+    if(unsubSales) unsubSales();
+    fbReady = false; fbDb = null;
+    setSyncStatus('off', 'Hindi konektado (local storage na lang)');
+    toast('Na-disconnect sa Firebase.');
+  });
+
+  // ---------- header date ----------
+  document.getElementById('today-date').textContent = new Date().toLocaleDateString('en-PH', {weekday:'short', year:'numeric', month:'short', day:'numeric'});
+  document.getElementById('today-date-label').textContent = new Date().toLocaleDateString('en-PH', {month:'short', day:'numeric', year:'numeric'});
+
+  // ---------- tabs ----------
+  document.querySelectorAll('nav.tabs button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('view-'+btn.dataset.view).classList.add('active');
+      if(btn.dataset.view === 'sell') renderSellSelect();
+      if(btn.dataset.view === 'today') renderToday();
+    });
+  });
+
+  // ---------- product form ----------
+  const form = document.getElementById('product-form');
+  const fName = document.getElementById('f-name');
+  const fWholesale = document.getElementById('f-wholesale');
+  const fSelling = document.getElementById('f-selling');
+  const fQty = document.getElementById('f-qty');
+  const fProfitPreview = document.getElementById('f-profit-preview');
+  const productIdField = document.getElementById('product-id');
+  const cancelBtn = document.getElementById('product-cancel-btn');
+  const submitBtn = document.getElementById('product-submit-btn');
+  const formTitle = document.getElementById('product-form-title');
+
+  function updateProfitPreview(){
+    const w = parseFloat(fWholesale.value) || 0;
+    const s = parseFloat(fSelling.value) || 0;
+    const p = s - w;
+    fProfitPreview.textContent = PESO(p);
+    fProfitPreview.style.color = p < 0 ? '#C0392B' : '';
+  }
+  fWholesale.addEventListener('input', updateProfitPreview);
+  fSelling.addEventListener('input', updateProfitPreview);
+
+  form.addEventListener('submit', e=>{
+    e.preventDefault();
+    const id = productIdField.value;
+    const data = {
+      name: fName.value.trim(),
+      wholesale: parseFloat(fWholesale.value),
+      selling: parseFloat(fSelling.value),
+      qty: parseInt(fQty.value, 10)
+    };
+    if(!data.name){ toast('Kailangan ng pangalan ng produkto.'); return; }
+
+    if(id){
+      const p = products.find(p=>p.id === id);
+      Object.assign(p, data);
+      toast('Na-update: ' + data.name);
+      if(fbReady) fbDb.collection('products').doc(id).set(data, {merge:true}).catch(err=>toast('Sync error: '+err.message));
+    } else {
+      const newId = 'p_'+Date.now();
+      products.push({ id: newId, ...data });
+      toast('Naidagdag: ' + data.name);
+      if(fbReady) fbDb.collection('products').doc(newId).set(data).catch(err=>toast('Sync error: '+err.message));
+    }
+    saveProducts();
+    resetForm();
+    renderProducts();
+  });
+
+  cancelBtn.addEventListener('click', resetForm);
+
+  function resetForm(){
+    form.reset();
+    productIdField.value = '';
+    formTitle.textContent = 'Magdagdag ng Produkto';
+    submitBtn.textContent = 'Save Product';
+    cancelBtn.style.display = 'none';
+    fProfitPreview.textContent = '₱0.00';
+  }
+
+  function editProduct(id){
+    const p = products.find(p=>p.id === id);
+    if(!p) return;
+    productIdField.value = p.id;
+    fName.value = p.name;
+    fWholesale.value = p.wholesale;
+    fSelling.value = p.selling;
+    fQty.value = p.qty;
+    updateProfitPreview();
+    formTitle.textContent = 'I-edit: ' + p.name;
+    submitBtn.textContent = 'Update Product';
+    cancelBtn.style.display = 'inline-block';
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  function deleteProduct(id){
+    const p = products.find(p=>p.id === id);
+    if(!p) return;
+    if(!confirm('Sigurado ka bang burahin ang "'+p.name+'"?')) return;
+    products = products.filter(p=>p.id !== id);
+    saveProducts();
+    renderProducts();
+    toast('Binura: ' + p.name);
+    if(fbReady) fbDb.collection('products').doc(id).delete().catch(err=>toast('Sync error: '+err.message));
+  }
+
+  // ---------- products table ----------
+  function renderProducts(){
+    const q = document.getElementById('product-search').value.trim().toLowerCase();
+    const tbody = document.getElementById('products-tbody');
+    const list = products.filter(p=>p.name.toLowerCase().includes(q))
+                          .sort((a,b)=>a.name.localeCompare(b.name));
+    if(list.length === 0){
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Walang produkto.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map(p=>{
+      const profit = p.selling - p.wholesale;
+      const low = p.qty <= LOW_STOCK_THRESHOLD;
+      return `<tr class="${low?'low-stock':''}">
+        <td class="pname">${escapeHtml(p.name)}${low?'<span class="stock-badge">Mababa</span>':''}</td>
+        <td class="num">${PESO(p.wholesale)}</td>
+        <td class="num">${PESO(p.selling)}</td>
+        <td class="num">${PESO(profit)}</td>
+        <td class="num">${p.qty}</td>
+        <td class="no-print">
+          <button class="btn small outline" onclick="TindahanPOS.editProduct('${p.id}')">Edit</button>
+          <button class="btn small red" onclick="TindahanPOS.deleteProduct('${p.id}')">Delete</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+  document.getElementById('product-search').addEventListener('input', renderProducts);
+
+  function escapeHtml(s){
+    return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ---------- price check ----------
+  const pcInput = document.getElementById('pricecheck-input');
+  const pcResults = document.getElementById('pricecheck-results');
+  let pcEditingId = null;
+
+  function renderPriceCheck(){
+    const q = pcInput.value.trim().toLowerCase();
+    if(!q){ pcResults.innerHTML=''; return; }
+    const matches = products.filter(p=>p.name.toLowerCase().includes(q)).slice(0,6);
+    if(matches.length === 0){
+      pcResults.innerHTML = '<div class="price-card">Walang nahanap na produkto.</div>';
+      return;
+    }
+    pcResults.innerHTML = matches.map(p=>{
+      const low = p.qty <= LOW_STOCK_THRESHOLD;
+      if(p.id === pcEditingId){
+        return `<div class="price-card ${low?'low':''}">
+          <div class="pname">${escapeHtml(p.name)}</div>
+          <div class="pedit-row">
+            <input type="number" step="0.01" min="0" id="pc-edit-input" value="${p.selling}" autofocus>
+            <button class="pedit-save" onclick="TindahanPOS.savePriceEdit('${p.id}')">Save</button>
+            <button class="pedit-cancel" onclick="TindahanPOS.cancelPriceEdit()">Cancel</button>
+          </div>
+          <div class="pstock">Stock: ${p.qty}${low?' — mababa na!':''}</div>
+        </div>`;
+      }
+      return `<div class="price-card ${low?'low':''}">
+        <div class="pname">${escapeHtml(p.name)}</div>
+        <div class="pprice">${PESO(p.selling)}</div>
+        <div class="pstock">Stock: ${p.qty}${low?' — mababa na!':''}</div>
+        <button class="pupdate-btn" onclick="TindahanPOS.startPriceEdit('${p.id}')">I-update ang presyo</button>
+      </div>`;
+    }).join('');
+    const editInput = document.getElementById('pc-edit-input');
+    if(editInput){
+      editInput.focus();
+      editInput.select();
+      editInput.addEventListener('keydown', e=>{
+        if(e.key === 'Enter') savePriceEdit(pcEditingId);
+        if(e.key === 'Escape') cancelPriceEdit();
+      });
+    }
+  }
+  pcInput.addEventListener('input', ()=>{ pcEditingId = null; renderPriceCheck(); });
+
+  function startPriceEdit(id){
+    pcEditingId = id;
+    renderPriceCheck();
+  }
+  function cancelPriceEdit(){
+    pcEditingId = null;
+    renderPriceCheck();
+  }
+  function savePriceEdit(id){
+    const p = products.find(p=>p.id === id);
+    const input = document.getElementById('pc-edit-input');
+    const newPrice = parseFloat(input.value);
+    if(isNaN(newPrice) || newPrice < 0){ toast('Ilagay ang tamang presyo.'); return; }
+    p.selling = newPrice;
+    saveProducts();
+    pcEditingId = null;
+    renderPriceCheck();
+    renderProducts();
+    toast('Na-update ang presyo ni ' + p.name);
+    if(fbReady) fbDb.collection('products').doc(id).update({selling:newPrice}).catch(err=>toast('Sync error: '+err.message));
+  }
+
+  // ---------- sell ----------
+  let sellSelectedId = null;
+  const sellSearchInput = document.getElementById('sell-search-input');
+  const sellSuggestions = document.getElementById('sell-suggestions');
+
+  function renderSellSelect(){
+    // called on tab switch / after data changes — refreshes summary and clears stale selection
+    if(sellSelectedId){
+      const p = products.find(p=>p.id === sellSelectedId);
+      if(!p || p.qty <= 0) sellSelectedId = null;
+    }
+    updateSellSummary();
+  }
+
+  function renderSellSuggestions(){
+    const q = sellSearchInput.value.trim().toLowerCase();
+    if(!q){ sellSuggestions.classList.remove('show'); sellSuggestions.innerHTML=''; return; }
+    const matches = products.filter(p=>p.qty > 0 && p.name.toLowerCase().includes(q))
+                             .sort((a,b)=>a.name.localeCompare(b.name)).slice(0,8);
+    if(matches.length === 0){
+      sellSuggestions.innerHTML = '<div class="sell-suggestion-empty">Walang stock na tugma.</div>';
+    } else {
+      sellSuggestions.innerHTML = matches.map(p=>`
+        <div class="sell-suggestion-item" onclick="TindahanPOS.selectSellProduct('${p.id}')">
+          <span class="sname">${escapeHtml(p.name)}</span>
+          <span class="sinfo">${PESO(p.selling)} · stock ${p.qty}</span>
+        </div>`).join('');
+    }
+    sellSuggestions.classList.add('show');
+  }
+  sellSearchInput.addEventListener('input', ()=>{ sellSelectedId = null; renderSellSuggestions(); updateSellSummary(); });
+  sellSearchInput.addEventListener('focus', renderSellSuggestions);
+  document.addEventListener('click', e=>{
+    if(!e.target.closest('.sell-search-wrap')) sellSuggestions.classList.remove('show');
+  });
+
+  function selectSellProduct(id){
+    const p = products.find(p=>p.id === id);
+    if(!p) return;
+    sellSelectedId = id;
+    sellSearchInput.value = p.name;
+    sellSuggestions.classList.remove('show');
+    sellSuggestions.innerHTML = '';
+    updateSellSummary();
+    document.getElementById('sell-qty').focus();
+  }
+
+  document.getElementById('sell-qty').addEventListener('input', updateSellSummary);
+
+  function updateSellSummary(){
+    const p = products.find(p=>p.id === sellSelectedId);
+    const summary = document.getElementById('sell-summary');
+    const qty = parseInt(document.getElementById('sell-qty').value, 10) || 0;
+    if(!p){
+      summary.innerHTML = 'Pumili ng produkto para makita ang presyo.';
+      return;
+    }
+    const total = p.selling * qty;
+    const profit = (p.selling - p.wholesale) * qty;
+    summary.innerHTML = `${escapeHtml(p.name)} &nbsp;•&nbsp; ${PESO(p.selling)} x ${qty} = <span class="total">${PESO(total)}</span><br>
+      Available stock: ${p.qty} &nbsp;|&nbsp; Estimated profit: ${PESO(profit)}`;
+  }
+
+  document.getElementById('sell-btn').addEventListener('click', ()=>{
+    const p = products.find(p=>p.id === sellSelectedId);
+    const qty = parseInt(document.getElementById('sell-qty').value, 10);
+    if(!p){ toast('Pumili muna ng produkto.'); return; }
+    if(!qty || qty < 1){ toast('Ilagay ang tamang quantity.'); return; }
+    if(qty > p.qty){ toast('Kulang ang stock ni ' + p.name + '. Available: ' + p.qty); return; }
+
+    p.qty -= qty;
+    saveProducts();
+
+    const saleId = 's_'+Date.now();
+    const saleRecord = {
+      id: saleId,
+      productId: p.id,
+      productName: p.name,
+      qty: qty,
+      unitPrice: p.selling,
+      unitCost: p.wholesale,
+      revenue: p.selling * qty,
+      profit: (p.selling - p.wholesale) * qty,
+      timestamp: new Date().toISOString()
+    };
+    sales.push(saleRecord);
+    saveSales();
+
+    toast('Nabenta: ' + qty + ' x ' + p.name);
+    renderProducts();
+    sellSelectedId = null;
+    sellSearchInput.value = '';
+    document.getElementById('sell-qty').value = 1;
+    updateSellSummary();
+
+    if(fbReady){
+      fbDb.collection('products').doc(p.id).update({qty: p.qty}).catch(err=>toast('Sync error: '+err.message));
+      const {id: _sid, ...saleData} = saleRecord;
+      fbDb.collection('sales').doc(saleId).set(saleData).catch(err=>toast('Sync error: '+err.message));
+    }
+  });
+
+
+  // ---------- today's sales ----------
+  function renderToday(){
+    const today = todayStr();
+    const list = sales.filter(s=>todayStr(s.timestamp) === today)
+                       .sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+    const tbody = document.getElementById('today-tbody');
+    if(list.length === 0){
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Wala pang benta ngayong araw.</td></tr>';
+    } else {
+      tbody.innerHTML = list.map(s=>{
+        const t = new Date(s.timestamp).toLocaleTimeString('en-PH', {hour:'2-digit', minute:'2-digit'});
+        return `<tr>
+          <td class="mono">${t}</td>
+          <td>${escapeHtml(s.productName)}</td>
+          <td class="num">${s.qty}</td>
+          <td class="num">${PESO(s.unitPrice)}</td>
+          <td class="num">${PESO(s.revenue)}</td>
+          <td class="num">${PESO(s.profit)}</td>
+        </tr>`;
+      }).join('');
+    }
+    const totalRevenue = list.reduce((a,s)=>a+s.revenue,0);
+    const totalProfit = list.reduce((a,s)=>a+s.profit,0);
+    const totalQty = list.reduce((a,s)=>a+s.qty,0);
+    document.getElementById('today-totals').innerHTML = `
+      <div class="stat"><div class="label">Items Sold</div><div class="val">${totalQty}</div></div>
+      <div class="stat"><div class="label">Total Revenue</div><div class="val">${PESO(totalRevenue)}</div></div>
+      <div class="stat"><div class="label">Total Profit</div><div class="val">${PESO(totalProfit)}</div></div>
+    `;
+  }
+
+  // ---------- monthly report ----------
+  const monthInput = document.getElementById('report-month');
+  const now = new Date();
+  monthInput.value = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+
+  document.getElementById('generate-report-btn').addEventListener('click', ()=>{
+    const [y,m] = monthInput.value.split('-').map(Number);
+    if(!y || !m){ toast('Pumili ng buwan.'); return; }
+    const monthSales = sales.filter(s=>{
+      const d = new Date(s.timestamp);
+      return d.getFullYear() === y && (d.getMonth()+1) === m;
+    });
+
+    const byProduct = {};
+    monthSales.forEach(s=>{
+      if(!byProduct[s.productName]) byProduct[s.productName] = {qty:0, revenue:0, profit:0};
+      byProduct[s.productName].qty += s.qty;
+      byProduct[s.productName].revenue += s.revenue;
+      byProduct[s.productName].profit += s.profit;
+    });
+    const rows = Object.entries(byProduct).sort((a,b)=>b[1].revenue - a[1].revenue);
+
+    const totalRevenue = monthSales.reduce((a,s)=>a+s.revenue,0);
+    const totalProfit = monthSales.reduce((a,s)=>a+s.profit,0);
+    const totalCost = totalRevenue - totalProfit;
+    const totalQty = monthSales.reduce((a,s)=>a+s.qty,0);
+
+    const monthLabel = new Date(y, m-1, 1).toLocaleDateString('en-PH', {month:'long', year:'numeric'});
+
+    const html = `
+      <div class="receipt-header">
+        <h2>Tindahan POS</h2>
+        <div>Buwanang Ulat — ${monthLabel}</div>
+        <div style="font-size:11px; margin-top:4px;">Na-generate: ${new Date().toLocaleString('en-PH')}</div>
+      </div>
+      <table>
+        <thead><tr><th>Produkto</th><th class="num">Qty Naibenta</th><th class="num">Revenue</th><th class="num">Profit</th></tr></thead>
+        <tbody>
+        ${rows.length === 0
+          ? '<tr class="empty-row"><td colspan="4">Walang benta sa buwang ito.</td></tr>'
+          : rows.map(([name, v])=>`<tr><td>${escapeHtml(name)}</td><td class="num">${v.qty}</td><td class="num">${PESO(v.revenue)}</td><td class="num">${PESO(v.profit)}</td></tr>`).join('')
+        }
+        </tbody>
+      </table>
+      <div class="receipt-totals">
+        <div><span>Total Items Sold</span><span>${totalQty}</span></div>
+        <div><span>Total Cost (Wholesale)</span><span>${PESO(totalCost)}</span></div>
+        <div><span>Total Revenue</span><span>${PESO(totalRevenue)}</span></div>
+        <div class="grand"><span>Total Profit</span><span>${PESO(totalProfit)}</span></div>
+      </div>
+    `;
+    document.getElementById('receipt-content').innerHTML = html;
+    document.getElementById('report-output').classList.add('show');
+    document.getElementById('print-report-btn').disabled = false;
+  });
+
+  document.getElementById('print-report-btn').addEventListener('click', ()=>window.print());
+
+  // ---------- export / import ----------
+  document.getElementById('export-btn').addEventListener('click', ()=>{
+    const backup = { products, sales, exportedAt: new Date().toISOString() };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'tindahan-pos-backup-' + todayStr() + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Na-export ang backup.');
+  });
+
+  document.getElementById('import-btn').addEventListener('click', ()=>{
+    document.getElementById('import-file').click();
+  });
+  document.getElementById('import-file').addEventListener('change', e=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = evt=>{
+      try{
+        const data = JSON.parse(evt.target.result);
+        if(!Array.isArray(data.products) || !Array.isArray(data.sales)) throw new Error('bad format');
+        if(!confirm('Papalitan nito ang kasalukuyang data. Magpatuloy?')) return;
+        products = data.products;
+        sales = data.sales;
+        saveProducts(); saveSales();
+        renderProducts(); renderSellSelect(); renderToday();
+        toast('Na-import ang backup.');
+        if(fbReady) pushFullDatasetToFirebase();
+      }catch(err){
+        toast('Invalid backup file.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
+  // expose for inline handlers
+  window.TindahanPOS = { editProduct, deleteProduct, startPriceEdit, cancelPriceEdit, savePriceEdit, selectSellProduct };
+
+  // ---------- init ----------
+  renderProducts();
+  renderSellSelect();
+  renderToday();
+
+  const savedFbConfig = localStorage.getItem(LS_FB_CONFIG);
+  if(savedFbConfig){
+    try{
+      const cfg = JSON.parse(savedFbConfig);
+      document.getElementById('fb-config-input').value = JSON.stringify(cfg, null, 2);
+      connectFirebase(cfg, true);
+    }catch(e){ setSyncStatus('off', 'Hindi konektado (local storage na lang)'); }
+  } else {
+    setSyncStatus('off', 'Hindi konektado (local storage na lang)');
+  }
+})();
+</script>
+</body>
+</html>
