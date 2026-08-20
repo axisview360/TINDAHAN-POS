@@ -342,7 +342,7 @@
   <button data-view="products" class="active">Mga Produkto</button>
   <button data-view="sell">Magbenta</button>
   <button data-view="today">Benta Ngayon</button>
-  <button data-view="report">Buwanang Ulat</button>
+  <button data-view="report">Ulat</button>
   <button data-view="lowstock">Mababang Stock</button>
   <button data-view="sync">Firebase Sync</button>
 </nav>
@@ -467,12 +467,19 @@
   <!-- REPORT VIEW -->
   <section class="view" id="view-report">
     <div class="panel">
-      <h2>Buwanang Ulat (Monthly Report)</h2>
+      <h2>Ulat (Report)</h2>
       <div class="report-controls">
         <div class="field">
-          <label>Piliin ang Buwan</label>
-          <input type="month" id="report-month">
+          <label>Mula (From)</label>
+          <input type="date" id="report-start">
         </div>
+        <div class="field">
+          <label>Hanggang (To)</label>
+          <input type="date" id="report-end">
+        </div>
+        <button class="btn small outline" id="preset-today-btn" type="button">Ngayong Araw</button>
+        <button class="btn small outline" id="preset-week-btn" type="button">Ngayong Linggo</button>
+        <button class="btn small outline" id="preset-month-btn" type="button">Ngayong Buwan</button>
         <button class="btn" id="generate-report-btn">Generate Report</button>
         <button class="btn outline" id="print-report-btn" disabled>Print (A4)</button>
       </div>
@@ -1070,46 +1077,79 @@
     `;
   }
 
-  // ---------- monthly report ----------
-  const monthInput = document.getElementById('report-month');
+  // ---------- report (custom date range) ----------
+  const reportStartInput = document.getElementById('report-start');
+  const reportEndInput = document.getElementById('report-end');
   const now = new Date();
-  monthInput.value = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  reportStartInput.value = todayStr(firstOfMonth);
+  reportEndInput.value = todayStr(now);
+
+  document.getElementById('preset-today-btn').addEventListener('click', ()=>{
+    reportStartInput.value = todayStr();
+    reportEndInput.value = todayStr();
+  });
+  document.getElementById('preset-week-btn').addEventListener('click', ()=>{
+    const d = new Date();
+    const dow = d.getDay(); // 0=Sun
+    const monday = new Date(d);
+    monday.setDate(d.getDate() - ((dow + 6) % 7));
+    reportStartInput.value = todayStr(monday);
+    reportEndInput.value = todayStr(d);
+  });
+  document.getElementById('preset-month-btn').addEventListener('click', ()=>{
+    const d = new Date();
+    reportStartInput.value = todayStr(new Date(d.getFullYear(), d.getMonth(), 1));
+    reportEndInput.value = todayStr(d);
+  });
 
   document.getElementById('generate-report-btn').addEventListener('click', ()=>{
-    const [y,m] = monthInput.value.split('-').map(Number);
-    if(!y || !m){ toast('Pumili ng buwan.'); return; }
-    const monthSales = sales.filter(s=>{
-      const d = new Date(s.timestamp);
-      return d.getFullYear() === y && (d.getMonth()+1) === m;
+    const startVal = reportStartInput.value;
+    const endVal = reportEndInput.value;
+    if(!startVal || !endVal){ toast('Piliin ang mula at hanggang na petsa.'); return; }
+    if(startVal > endVal){ toast('Mali ang range — mas huli ang "mula" kaysa "hanggang".'); return; }
+
+    const rangeSales = sales.filter(s=>{
+      const d = todayStr(s.timestamp);
+      return d >= startVal && d <= endVal;
     });
 
     const byProduct = {};
-    monthSales.forEach(s=>{
+    rangeSales.forEach(s=>{
       if(!byProduct[s.productName]) byProduct[s.productName] = {qty:0, revenue:0, profit:0};
       byProduct[s.productName].qty += s.qty;
       byProduct[s.productName].revenue += s.revenue;
       byProduct[s.productName].profit += s.profit;
     });
     const rows = Object.entries(byProduct).sort((a,b)=>b[1].revenue - a[1].revenue);
+    const byQtyDesc = [...rows].sort((a,b)=>b[1].qty - a[1].qty);
+    const topSellers = byQtyDesc.slice(0,5);
+    const slowSellers = [...byQtyDesc].reverse().slice(0,5);
+    const noSaleProducts = products.filter(p=>!byProduct[p.name]).sort((a,b)=>a.name.localeCompare(b.name));
 
-    const totalRevenue = monthSales.reduce((a,s)=>a+s.revenue,0);
-    const totalProfit = monthSales.reduce((a,s)=>a+s.profit,0);
+    const totalRevenue = rangeSales.reduce((a,s)=>a+s.revenue,0);
+    const totalProfit = rangeSales.reduce((a,s)=>a+s.profit,0);
     const totalCost = totalRevenue - totalProfit;
-    const totalQty = monthSales.reduce((a,s)=>a+s.qty,0);
+    const totalQty = rangeSales.reduce((a,s)=>a+s.qty,0);
 
-    const monthLabel = new Date(y, m-1, 1).toLocaleDateString('en-PH', {month:'long', year:'numeric'});
+    const fmt = ds => new Date(ds+'T00:00:00').toLocaleDateString('en-PH', {month:'short', day:'numeric', year:'numeric'});
+    const rangeLabel = startVal === endVal ? fmt(startVal) : fmt(startVal) + ' – ' + fmt(endVal);
+
+    function sellerRows(list){
+      return list.map(([name, v])=>`<tr><td>${escapeHtml(name)}</td><td class="num">${v.qty}</td></tr>`).join('');
+    }
 
     const html = `
       <div class="receipt-header">
         <h2>Tindahan POS</h2>
-        <div>Buwanang Ulat — ${monthLabel}</div>
+        <div>Ulat — ${rangeLabel}</div>
         <div style="font-size:11px; margin-top:4px;">Na-generate: ${new Date().toLocaleString('en-PH')}</div>
       </div>
       <table>
         <thead><tr><th>Produkto</th><th class="num">Qty Naibenta</th><th class="num">Revenue</th><th class="num">Profit</th></tr></thead>
         <tbody>
         ${rows.length === 0
-          ? '<tr class="empty-row"><td colspan="4">Walang benta sa buwang ito.</td></tr>'
+          ? '<tr class="empty-row"><td colspan="4">Walang benta sa panahong ito.</td></tr>'
           : rows.map(([name, v])=>`<tr><td>${escapeHtml(name)}</td><td class="num">${v.qty}</td><td class="num">${PESO(v.revenue)}</td><td class="num">${PESO(v.profit)}</td></tr>`).join('')
         }
         </tbody>
@@ -1120,6 +1160,23 @@
         <div><span>Total Revenue</span><span>${PESO(totalRevenue)}</span></div>
         <div class="grand"><span>Total Profit</span><span>${PESO(totalProfit)}</span></div>
       </div>
+      ${rows.length > 0 ? `
+      <div style="border-top:2px dashed var(--ink); margin-top:16px; padding-top:12px;">
+        <div style="font-family:'Bangers',cursive; font-size:17px; letter-spacing:0.02em; color:var(--green); margin-bottom:6px;">Pinakamabenta (Top Sellers) — i-priority sa restock</div>
+        <table>
+          <thead><tr><th>Produkto</th><th class="num">Qty Naibenta</th></tr></thead>
+          <tbody>${sellerRows(topSellers)}</tbody>
+        </table>
+        <div style="font-family:'Bangers',cursive; font-size:17px; letter-spacing:0.02em; color:var(--red); margin:14px 0 6px;">Mabagal Bumenta (Slow Movers) — i-review kung kailangan pa</div>
+        <table>
+          <thead><tr><th>Produkto</th><th class="num">Qty Naibenta</th></tr></thead>
+          <tbody>${sellerRows(slowSellers)}</tbody>
+        </table>
+        ${noSaleProducts.length > 0 ? `
+        <div style="margin-top:10px; font-size:11.5px; color:#6b5c47;">
+          Walang benta sa panahong ito: ${noSaleProducts.map(p=>escapeHtml(p.name)).join(', ')}
+        </div>` : ''}
+      </div>` : ''}
     `;
     document.getElementById('receipt-content').innerHTML = html;
     document.getElementById('report-output').classList.add('show');
