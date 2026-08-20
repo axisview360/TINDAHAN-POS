@@ -363,14 +363,21 @@
             <input type="number" id="f-wholesale" step="0.01" min="0" required>
           </div>
           <div class="field">
-            <label>Selling Price (₱)</label>
+            <label>Pcs per Pack</label>
+            <input type="number" id="f-pcsperpack" step="1" min="1" value="1">
+          </div>
+          <div class="field">
+            <label>Selling Price / pc (₱)</label>
             <input type="number" id="f-selling" step="0.01" min="0" required>
           </div>
           <div class="field">
-            <label>Quantity</label>
+            <label>Quantity (pcs)</label>
             <input type="number" id="f-qty" step="1" min="0" required>
           </div>
-          <div class="profit-preview">Profit per unit: <strong id="f-profit-preview">₱0.00</strong></div>
+          <div class="profit-preview">
+            Leave "Pcs per Pack" as 1 for loose/tingi items. For a packed item (e.g. 1 pack of biscuits = 10 pcs), put the pack's wholesale price above and 10 here — cost per piece is computed automatically.<br>
+            Cost per pc: <strong id="f-cost-preview">₱0.00</strong> &nbsp;|&nbsp; Profit per unit: <strong id="f-profit-preview">₱0.00</strong>
+          </div>
         </div>
         <div class="row-actions">
           <button type="submit" class="btn" id="product-submit-btn">Save Product</button>
@@ -396,7 +403,7 @@
         <thead>
           <tr>
             <th>Product</th>
-            <th class="num">Wholesale</th>
+            <th class="num">Cost/pc</th>
             <th class="num">Selling</th>
             <th class="num">Profit/Unit</th>
             <th class="num">Qty</th>
@@ -643,22 +650,32 @@
   const form = document.getElementById('product-form');
   const fName = document.getElementById('f-name');
   const fWholesale = document.getElementById('f-wholesale');
+  const fPcsPerPack = document.getElementById('f-pcsperpack');
   const fSelling = document.getElementById('f-selling');
   const fQty = document.getElementById('f-qty');
+  const fCostPreview = document.getElementById('f-cost-preview');
   const fProfitPreview = document.getElementById('f-profit-preview');
   const productIdField = document.getElementById('product-id');
   const cancelBtn = document.getElementById('product-cancel-btn');
   const submitBtn = document.getElementById('product-submit-btn');
   const formTitle = document.getElementById('product-form-title');
 
+  function costPerPiece(p){
+    return p.wholesale / (p.pcsPerPack || 1);
+  }
+
   function updateProfitPreview(){
     const w = parseFloat(fWholesale.value) || 0;
+    const packSize = parseInt(fPcsPerPack.value, 10) || 1;
     const s = parseFloat(fSelling.value) || 0;
-    const p = s - w;
-    fProfitPreview.textContent = PESO(p);
-    fProfitPreview.style.color = p < 0 ? '#C0392B' : '';
+    const cost = w / packSize;
+    const profit = s - cost;
+    fCostPreview.textContent = PESO(cost);
+    fProfitPreview.textContent = PESO(profit);
+    fProfitPreview.style.color = profit < 0 ? '#C0392B' : '';
   }
   fWholesale.addEventListener('input', updateProfitPreview);
+  fPcsPerPack.addEventListener('input', updateProfitPreview);
   fSelling.addEventListener('input', updateProfitPreview);
 
   form.addEventListener('submit', e=>{
@@ -667,6 +684,7 @@
     const data = {
       name: fName.value.trim(),
       wholesale: parseFloat(fWholesale.value),
+      pcsPerPack: parseInt(fPcsPerPack.value, 10) || 1,
       selling: parseFloat(fSelling.value),
       qty: parseInt(fQty.value, 10)
     };
@@ -696,7 +714,9 @@
     formTitle.textContent = 'Magdagdag ng Produkto';
     submitBtn.textContent = 'Save Product';
     cancelBtn.style.display = 'none';
+    fCostPreview.textContent = '₱0.00';
     fProfitPreview.textContent = '₱0.00';
+    fProfitPreview.style.color = '';
   }
 
   function editProduct(id){
@@ -705,6 +725,7 @@
     productIdField.value = p.id;
     fName.value = p.name;
     fWholesale.value = p.wholesale;
+    fPcsPerPack.value = p.pcsPerPack || 1;
     fSelling.value = p.selling;
     fQty.value = p.qty;
     updateProfitPreview();
@@ -736,11 +757,14 @@
       return;
     }
     tbody.innerHTML = list.map(p=>{
-      const profit = p.selling - p.wholesale;
+      const cost = costPerPiece(p);
+      const profit = p.selling - cost;
       const low = p.qty <= LOW_STOCK_THRESHOLD;
+      const packNote = (p.pcsPerPack && p.pcsPerPack > 1)
+        ? `<div style="font-size:10px; color:#6b5c47;">(${PESO(p.wholesale)} / ${p.pcsPerPack}pcs)</div>` : '';
       return `<tr class="${low?'low-stock':''}">
         <td class="pname">${escapeHtml(p.name)}${low?'<span class="stock-badge">Mababa</span>':''}</td>
-        <td class="num">${PESO(p.wholesale)}</td>
+        <td class="num">${PESO(cost)}${packNote}</td>
         <td class="num">${PESO(p.selling)}</td>
         <td class="num">${PESO(profit)}</td>
         <td class="num">${p.qty}</td>
@@ -882,7 +906,7 @@
       return;
     }
     const total = p.selling * qty;
-    const profit = (p.selling - p.wholesale) * qty;
+    const profit = (p.selling - costPerPiece(p)) * qty;
     summary.innerHTML = `${escapeHtml(p.name)} &nbsp;•&nbsp; ${PESO(p.selling)} x ${qty} = <span class="total">${PESO(total)}</span><br>
       Available stock: ${p.qty} &nbsp;|&nbsp; Estimated profit: ${PESO(profit)}`;
   }
@@ -897,6 +921,7 @@
     p.qty -= qty;
     saveProducts();
 
+    const cost = costPerPiece(p);
     const saleId = 's_'+Date.now();
     const saleRecord = {
       id: saleId,
@@ -904,9 +929,9 @@
       productName: p.name,
       qty: qty,
       unitPrice: p.selling,
-      unitCost: p.wholesale,
+      unitCost: cost,
       revenue: p.selling * qty,
-      profit: (p.selling - p.wholesale) * qty,
+      profit: (p.selling - cost) * qty,
       timestamp: new Date().toISOString()
     };
     sales.push(saleRecord);
