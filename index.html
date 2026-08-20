@@ -343,6 +343,7 @@
   <button data-view="sell">Magbenta</button>
   <button data-view="today">Benta Ngayon</button>
   <button data-view="report">Buwanang Ulat</button>
+  <button data-view="lowstock">Mababang Stock</button>
   <button data-view="sync">Firebase Sync</button>
 </nav>
 
@@ -377,7 +378,8 @@
           </div>
           <div class="profit-preview">
             Leave "Pcs per Pack" as 1 for loose/tingi items. For a packed item (e.g. 1 pack of biscuits = 10 pcs), put the pack's wholesale price above and 10 here — cost per piece is computed automatically.<br>
-            Cost per pc: <strong id="f-cost-preview">₱0.00</strong> &nbsp;|&nbsp; Profit per unit: <strong id="f-profit-preview">₱0.00</strong>
+            Cost per pc: <strong id="f-cost-preview">₱0.00</strong> &nbsp;|&nbsp; Profit per unit: <strong id="f-profit-preview">₱0.00</strong><br>
+            <span style="color:#6b5c47;">Suggested price (20–30% markup):</span> <strong id="f-suggested-price" style="color:var(--blue);">₱0.00 – ₱0.00</strong>
           </div>
         </div>
         <div class="row-actions">
@@ -507,6 +509,33 @@
     </div>
   </section>
 
+  <!-- LOW STOCK VIEW -->
+  <section class="view" id="view-lowstock">
+    <div class="panel">
+      <div class="flex-between">
+        <h2 style="margin-bottom:0;">Mababang Stock</h2>
+        <div class="field" style="max-width:160px; margin-bottom:0;">
+          <label>Threshold (qty)</label>
+          <input type="number" id="lowstock-threshold" min="1" step="1">
+        </div>
+      </div>
+      <p class="sync-help">Mga produktong kailangan nang i-restock — mababa na o naubos na ang stock. I-check ang "Tag as Restock" para markahan mo kung anong kailangan mong bilhin.</p>
+      <div style="overflow-x:auto; margin-top:10px;">
+      <table>
+        <thead>
+          <tr>
+            <th>Produkto</th>
+            <th class="num">Kasalukuyang Qty</th>
+            <th class="num">Cost/pc</th>
+            <th class="no-print">I-restock?</th>
+          </tr>
+        </thead>
+        <tbody id="lowstock-tbody"></tbody>
+      </table>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <div class="toast" id="toast"></div>
@@ -518,8 +547,9 @@
   const LS_PRODUCTS = 'tindahanPOS_products';
   const LS_SALES = 'tindahanPOS_sales';
   const LS_FB_CONFIG = 'tindahanPOS_fbConfig';
+  const LS_THRESHOLD = 'tindahanPOS_threshold';
   const PESO = n => '₱' + Number(n).toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2});
-  const LOW_STOCK_THRESHOLD = 5;
+  let LOW_STOCK_THRESHOLD = parseInt(localStorage.getItem(LS_THRESHOLD), 10) || 5;
 
   let products = JSON.parse(localStorage.getItem(LS_PRODUCTS) || '[]');
   let sales = JSON.parse(localStorage.getItem(LS_SALES) || '[]');
@@ -644,6 +674,7 @@
       document.getElementById('view-'+btn.dataset.view).classList.add('active');
       if(btn.dataset.view === 'sell') renderSellSelect();
       if(btn.dataset.view === 'today') renderToday();
+      if(btn.dataset.view === 'lowstock') renderLowStock();
     });
   });
 
@@ -656,6 +687,7 @@
   const fQty = document.getElementById('f-qty');
   const fCostPreview = document.getElementById('f-cost-preview');
   const fProfitPreview = document.getElementById('f-profit-preview');
+  const fSuggestedPrice = document.getElementById('f-suggested-price');
   const productIdField = document.getElementById('product-id');
   const cancelBtn = document.getElementById('product-cancel-btn');
   const submitBtn = document.getElementById('product-submit-btn');
@@ -663,6 +695,10 @@
 
   function costPerPiece(p){
     return p.wholesale / (p.pcsPerPack || 1);
+  }
+
+  function suggestedPriceRange(cost){
+    return { low: cost * 1.20, high: cost * 1.30 };
   }
 
   function updateProfitPreview(){
@@ -674,6 +710,8 @@
     fCostPreview.textContent = PESO(cost);
     fProfitPreview.textContent = PESO(profit);
     fProfitPreview.style.color = profit < 0 ? '#C0392B' : '';
+    const range = suggestedPriceRange(cost);
+    fSuggestedPrice.textContent = PESO(range.low) + ' – ' + PESO(range.high);
   }
   fWholesale.addEventListener('input', updateProfitPreview);
   fPcsPerPack.addEventListener('input', updateProfitPreview);
@@ -775,8 +813,55 @@
         </td>
       </tr>`;
     }).join('');
+    renderLowStock();
   }
   document.getElementById('product-search').addEventListener('input', renderProducts);
+
+  // ---------- low stock ----------
+  const lowstockThresholdInput = document.getElementById('lowstock-threshold');
+  lowstockThresholdInput.value = LOW_STOCK_THRESHOLD;
+  lowstockThresholdInput.addEventListener('change', ()=>{
+    const v = parseInt(lowstockThresholdInput.value, 10);
+    LOW_STOCK_THRESHOLD = (v && v > 0) ? v : 5;
+    lowstockThresholdInput.value = LOW_STOCK_THRESHOLD;
+    localStorage.setItem(LS_THRESHOLD, String(LOW_STOCK_THRESHOLD));
+    renderProducts();
+    renderLowStock();
+  });
+
+  function renderLowStock(){
+    const tbody = document.getElementById('lowstock-tbody');
+    if(!tbody) return;
+    const list = products.filter(p=>p.qty <= LOW_STOCK_THRESHOLD)
+                          .sort((a,b)=>a.qty - b.qty);
+    if(list.length === 0){
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="4">Walang mababang stock — okay lahat!</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map(p=>{
+      const cost = costPerPiece(p);
+      const checked = p.restockFlagged ? 'checked' : '';
+      return `<tr class="low-stock">
+        <td class="pname">${escapeHtml(p.name)}</td>
+        <td class="num">${p.qty}</td>
+        <td class="num">${PESO(cost)}</td>
+        <td class="no-print">
+          <label style="display:flex; align-items:center; gap:6px; font-size:12.5px; cursor:pointer;">
+            <input type="checkbox" ${checked} onchange="TindahanPOS.toggleRestock('${p.id}', this.checked)">
+            I-restock
+          </label>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  function toggleRestock(id, flagged){
+    const p = products.find(p=>p.id === id);
+    if(!p) return;
+    p.restockFlagged = flagged;
+    saveProducts();
+    if(fbReady) fbDb.collection('products').doc(id).update({restockFlagged: flagged}).catch(err=>toast('Sync error: '+err.message));
+  }
 
   function escapeHtml(s){
     return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -812,6 +897,7 @@
         <div class="pname">${escapeHtml(p.name)}</div>
         <div class="pprice">${PESO(p.selling)}</div>
         <div class="pstock">Stock: ${p.qty}${low?' — mababa na!':''}</div>
+        <div class="pstock" style="color:var(--blue);">Suggested (20–30%): ${(()=>{const r=suggestedPriceRange(costPerPiece(p)); return PESO(r.low)+' – '+PESO(r.high);})()}</div>
         <button class="pupdate-btn" onclick="TindahanPOS.startPriceEdit('${p.id}')">I-update ang presyo</button>
       </div>`;
     }).join('');
@@ -1082,7 +1168,7 @@
   });
 
   // expose for inline handlers
-  window.TindahanPOS = { editProduct, deleteProduct, startPriceEdit, cancelPriceEdit, savePriceEdit, selectSellProduct };
+  window.TindahanPOS = { editProduct, deleteProduct, startPriceEdit, cancelPriceEdit, savePriceEdit, selectSellProduct, toggleRestock };
 
   // ---------- init ----------
   renderProducts();
