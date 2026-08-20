@@ -472,9 +472,34 @@
           <label>Quantity</label>
           <input type="number" id="sell-qty" min="1" value="1">
         </div>
-        <button class="btn" id="sell-btn">Ibenta</button>
+        <button class="btn" id="sell-btn">Idagdag sa Cart</button>
       </div>
       <div class="sell-summary" id="sell-summary">Pumili ng produkto para makita ang presyo.</div>
+    </div>
+
+    <div class="panel" id="cart-panel" style="display:none;">
+      <div class="flex-between">
+        <h2 style="margin-bottom:0;">Cart ng Customer</h2>
+        <button class="btn small outline" id="clear-cart-btn" type="button">I-clear ang Cart</button>
+      </div>
+      <div style="overflow-x:auto; margin-top:14px;">
+      <table>
+        <thead>
+          <tr>
+            <th>Produkto</th>
+            <th class="num">Qty</th>
+            <th class="num">Presyo/pc</th>
+            <th class="num">Subtotal</th>
+            <th class="no-print"></th>
+          </tr>
+        </thead>
+        <tbody id="cart-tbody"></tbody>
+      </table>
+      </div>
+      <div class="totals-strip" id="cart-totals"></div>
+      <div class="row-actions">
+        <button class="btn" id="checkout-btn">Ibenta Lahat</button>
+      </div>
     </div>
   </section>
 
@@ -1001,24 +1026,34 @@
     if(fbReady) fbDb.collection('products').doc(id).update({selling:newPrice}).catch(err=>toast('Sync error: '+err.message));
   }
 
-  // ---------- sell ----------
+  // ---------- sell (with cart for multiple items) ----------
   let sellSelectedId = null;
+  let cart = [];
   const sellSearchInput = document.getElementById('sell-search-input');
   const sellSuggestions = document.getElementById('sell-suggestions');
+
+  function cartQtyFor(productId){
+    return cart.filter(c=>c.productId === productId).reduce((a,c)=>a+c.qty, 0);
+  }
+
+  function availableStock(p){
+    return p.qty - cartQtyFor(p.id);
+  }
 
   function renderSellSelect(){
     // called on tab switch / after data changes — refreshes summary and clears stale selection
     if(sellSelectedId){
       const p = products.find(p=>p.id === sellSelectedId);
-      if(!p || p.qty <= 0) sellSelectedId = null;
+      if(!p || availableStock(p) <= 0) sellSelectedId = null;
     }
     updateSellSummary();
+    renderCart();
   }
 
   function renderSellSuggestions(){
     const q = sellSearchInput.value.trim().toLowerCase();
     if(!q){ sellSuggestions.classList.remove('show'); sellSuggestions.innerHTML=''; return; }
-    const matches = products.filter(p=>p.qty > 0 && p.name.toLowerCase().includes(q))
+    const matches = products.filter(p=>availableStock(p) > 0 && p.name.toLowerCase().includes(q))
                              .sort((a,b)=>a.name.localeCompare(b.name)).slice(0,8);
     if(matches.length === 0){
       sellSuggestions.innerHTML = '<div class="sell-suggestion-empty">Walang stock na tugma.</div>';
@@ -1026,7 +1061,7 @@
       sellSuggestions.innerHTML = matches.map(p=>`
         <div class="sell-suggestion-item" onclick="TindahanPOS.selectSellProduct('${p.id}')">
           <span class="sname">${escapeHtml(p.name)}</span>
-          <span class="sinfo">${PESO(p.selling)} · stock ${p.qty}</span>
+          <span class="sinfo">${PESO(p.selling)} · stock ${availableStock(p)}</span>
         </div>`).join('');
     }
     sellSuggestions.classList.add('show');
@@ -1059,9 +1094,9 @@
       return;
     }
     const total = p.selling * qty;
-    const profit = (p.selling - costPerPiece(p)) * qty;
+    const avail = availableStock(p);
     summary.innerHTML = `${escapeHtml(p.name)} &nbsp;•&nbsp; ${PESO(p.selling)} x ${qty} = <span class="total">${PESO(total)}</span><br>
-      Available stock: ${p.qty} &nbsp;|&nbsp; Estimated profit: ${PESO(profit)}`;
+      Available stock: ${avail}${cartQtyFor(p.id) > 0 ? ' (may '+cartQtyFor(p.id)+' na sa cart)' : ''}`;
   }
 
   document.getElementById('sell-btn').addEventListener('click', ()=>{
@@ -1069,41 +1104,125 @@
     const qty = parseInt(document.getElementById('sell-qty').value, 10);
     if(!p){ toast('Pumili muna ng produkto.'); return; }
     if(!qty || qty < 1){ toast('Ilagay ang tamang quantity.'); return; }
-    if(qty > p.qty){ toast('Kulang ang stock ni ' + p.name + '. Available: ' + p.qty); return; }
+    if(qty > availableStock(p)){ toast('Kulang ang stock ni ' + p.name + '. Available: ' + availableStock(p)); return; }
 
-    p.qty -= qty;
-    saveProducts();
+    const existing = cart.find(c=>c.productId === p.id);
+    if(existing){
+      existing.qty += qty;
+    } else {
+      cart.push({
+        productId: p.id,
+        name: p.name,
+        qty: qty,
+        unitPrice: p.selling,
+        unitCost: costPerPiece(p)
+      });
+    }
 
-    const cost = costPerPiece(p);
-    const saleId = 's_'+Date.now();
-    const saleRecord = {
-      id: saleId,
-      productId: p.id,
-      productName: p.name,
-      qty: qty,
-      unitPrice: p.selling,
-      unitCost: cost,
-      revenue: p.selling * qty,
-      profit: (p.selling - cost) * qty,
-      timestamp: new Date().toISOString()
-    };
-    sales.push(saleRecord);
-    saveSales();
-
-    toast('Nabenta: ' + qty + ' x ' + p.name);
-    renderProducts();
+    toast('Idinagdag sa cart: ' + qty + ' x ' + p.name);
     sellSelectedId = null;
     sellSearchInput.value = '';
     document.getElementById('sell-qty').value = 1;
     updateSellSummary();
-
-    if(fbReady){
-      fbDb.collection('products').doc(p.id).update({qty: p.qty}).catch(err=>toast('Sync error: '+err.message));
-      const {id: _sid, ...saleData} = saleRecord;
-      fbDb.collection('sales').doc(saleId).set(saleData).catch(err=>toast('Sync error: '+err.message));
-    }
+    renderSellSuggestions();
+    renderCart();
   });
 
+  function renderCart(){
+    const panel = document.getElementById('cart-panel');
+    const tbody = document.getElementById('cart-tbody');
+    if(cart.length === 0){
+      panel.style.display = 'none';
+      return;
+    }
+    panel.style.display = 'block';
+    tbody.innerHTML = cart.map((c,idx)=>`
+      <tr>
+        <td>${escapeHtml(c.name)}</td>
+        <td class="num">${c.qty}</td>
+        <td class="num">${PESO(c.unitPrice)}</td>
+        <td class="num">${PESO(c.unitPrice * c.qty)}</td>
+        <td class="no-print"><button class="btn small red" onclick="TindahanPOS.removeCartItem(${idx})">Alisin</button></td>
+      </tr>`).join('');
+    const totalItems = cart.reduce((a,c)=>a+c.qty, 0);
+    const totalRevenue = cart.reduce((a,c)=>a+c.unitPrice*c.qty, 0);
+    const totalProfit = cart.reduce((a,c)=>a+(c.unitPrice-c.unitCost)*c.qty, 0);
+    document.getElementById('cart-totals').innerHTML = `
+      <div class="stat"><div class="label">Items</div><div class="val">${totalItems}</div></div>
+      <div class="stat"><div class="label">Total</div><div class="val">${PESO(totalRevenue)}</div></div>
+      <div class="stat"><div class="label">Est. Profit</div><div class="val">${PESO(totalProfit)}</div></div>
+    `;
+  }
+
+  function removeCartItem(idx){
+    cart.splice(idx, 1);
+    renderCart();
+    renderSellSuggestions();
+    updateSellSummary();
+  }
+
+  document.getElementById('clear-cart-btn').addEventListener('click', ()=>{
+    if(cart.length === 0) return;
+    if(!confirm('I-clear ang buong cart?')) return;
+    cart = [];
+    renderCart();
+    renderSellSuggestions();
+    updateSellSummary();
+  });
+
+  document.getElementById('checkout-btn').addEventListener('click', ()=>{
+    if(cart.length === 0){ toast('Wala pang laman ang cart.'); return; }
+
+    // re-validate stock against the live product list before committing
+    for(const c of cart){
+      const p = products.find(p=>p.id === c.productId);
+      if(!p || p.qty < c.qty){
+        toast('Kulang na ang stock ni ' + c.name + '. I-adjust ang cart.');
+        return;
+      }
+    }
+
+    let totalItems = 0, totalRevenue = 0;
+    const newSales = [];
+    cart.forEach(c=>{
+      const p = products.find(p=>p.id === c.productId);
+      p.qty -= c.qty;
+      const saleId = 's_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+      const saleRecord = {
+        id: saleId,
+        productId: p.id,
+        productName: p.name,
+        qty: c.qty,
+        unitPrice: c.unitPrice,
+        unitCost: c.unitCost,
+        revenue: c.unitPrice * c.qty,
+        profit: (c.unitPrice - c.unitCost) * c.qty,
+        timestamp: new Date().toISOString()
+      };
+      sales.push(saleRecord);
+      newSales.push({productId: p.id, newQty: p.qty, saleId, saleRecord});
+      totalItems += c.qty;
+      totalRevenue += c.unitPrice * c.qty;
+    });
+
+    saveProducts();
+    saveSales();
+
+    toast(`Nabenta: ${totalItems} items — ${PESO(totalRevenue)} total`);
+    cart = [];
+    renderProducts();
+    renderSellSuggestions();
+    updateSellSummary();
+    renderCart();
+
+    if(fbReady){
+      newSales.forEach(({productId, newQty, saleId, saleRecord})=>{
+        fbDb.collection('products').doc(productId).update({qty: newQty}).catch(err=>toast('Sync error: '+err.message));
+        const {id: _sid, ...saleData} = saleRecord;
+        fbDb.collection('sales').doc(saleId).set(saleData).catch(err=>toast('Sync error: '+err.message));
+      });
+    }
+  });
 
   // ---------- today's sales ----------
   function renderToday(){
