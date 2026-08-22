@@ -19,21 +19,57 @@
     --bg:#FFD93D;
     --paper:#FFFDF6;
     --ink:#171213;
+    --text-pop:#171213;
     --red:#EE3F32;
     --red-dark:#B9291F;
     --blue:#2F6FED;
     --green:#2CAE6B;
     --mustard:#FFC93C;
     --purple:#8B5CF6;
+    --purple-tint:#EFE4FF;
     --border:#EFE2B8;
     --danger:#EE3F32;
+    --muted:var(--muted);
+    --muted-light:var(--muted-light);
+    --panel-tint:var(--panel-tint);
+    --dot-rgb:23,18,19;
     --shadow: 5px 5px 0 var(--ink);
   }
+
+  html[data-theme="ocean"]{
+    --bg:#4FC3E8; --paper:#FFFDF9; --ink:#0B2C3D; --text-pop:#0B2C3D;
+    --red:#FF6B4A; --red-dark:#D9502F; --blue:#1565C0; --green:#1FA37B;
+    --mustard:#FFD23F; --purple:#6B4FE0; --purple-tint:#E6E0FF;
+    --border:#BEEAF5; --danger:#FF3B30; --muted:#3E6478; --muted-light:#7FAFC2;
+    --panel-tint:#E3F6FD; --dot-rgb:11,44,61;
+  }
+  html[data-theme="bubblegum"]{
+    --bg:#FF9ECF; --paper:#FFFDF9; --ink:#3A0F2B; --text-pop:#3A0F2B;
+    --red:#FF3D81; --red-dark:#C71C5D; --blue:#7B4FE0; --green:#2FBF8F;
+    --mustard:#FFE066; --purple:#5B3FD1; --purple-tint:#EDE5FF;
+    --border:#FFD6EA; --danger:#FF3D5A; --muted:#8A5A73; --muted-light:#C98FAE;
+    --panel-tint:#FFF0F7; --dot-rgb:58,15,43;
+  }
+  html[data-theme="tropical"]{
+    --bg:#A8E063; --paper:#FFFDF3; --ink:#1B3B1F; --text-pop:#1B3B1F;
+    --red:#FF7A3D; --red-dark:#D65A20; --blue:#1E9E8C; --green:#2E8B3D;
+    --mustard:#FFD54A; --purple:#6E4FD6; --purple-tint:#EAE2FF;
+    --border:#D9F0B0; --danger:#E8443A; --muted:#4E6B45; --muted-light:#8FAE7F;
+    --panel-tint:#F2F9E3; --dot-rgb:27,59,31;
+  }
+  html[data-theme="midnight"]{
+    --bg:#12141C; --paper:#1F2330; --ink:#F0EDE3; --text-pop:#000000;
+    --red:#FF4D4D; --red-dark:#C93636; --blue:#5B9BFF; --green:#3DDC97;
+    --mustard:#FFD166; --purple:#B18CFF; --purple-tint:#2A2440;
+    --border:#3A4056; --danger:#FF4D4D; --muted:#B8B4A8; --muted-light:#7A7668;
+    --panel-tint:#262A38; --dot-rgb:240,237,227;
+  }
+
   *{box-sizing:border-box;}
   body{
     margin:0;
     background:var(--bg);
-    background-image: radial-gradient(rgba(23,18,19,0.14) 1.6px, transparent 1.6px);
+    background-image: radial-gradient(rgba(var(--dot-rgb),0.14) 1.6px, transparent 1.6px);
     background-size:18px 18px;
     color:var(--ink);
     font-family:'Poppins',sans-serif;
@@ -58,7 +94,7 @@
     pointer-events:none;
   }
   header.top .brand{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; position:relative; z-index:1;}
-  header.top h1{font-size:36px; text-transform:uppercase; text-shadow:3px 3px 0 var(--ink);}
+  header.top h1{font-size:36px; text-transform:uppercase; text-shadow:3px 3px 0 var(--text-pop);}
   header.top .tagline{
     font-size:11px; font-family:'Space Mono',monospace; text-transform:none;
     background:rgba(0,0,0,0.22); padding:4px 10px; border-radius:999px;
@@ -123,7 +159,7 @@
   }
   .price-card .pname{font-weight:700; font-size:13.5px; margin-bottom:3px;}
   .price-card .pprice{font-family:'Space Mono',monospace; font-weight:700; font-size:21px; color:var(--red);}
-  .price-card .pstock{font-size:11.5px; color:#6b5c47; margin-top:2px;}
+  .price-card .pstock{font-size:11.5px; color:var(--muted); margin-top:2px;}
   .price-card.low .pstock{color:var(--danger); font-weight:700;}
   .price-card .pupdate-btn{
     margin-top:7px; font-family:'Bangers',cursive; font-size:11px; letter-spacing:0.02em; text-transform:uppercase;
@@ -157,7 +193,7 @@
   .quick-add-tile:active{transform:translate(3px,3px); box-shadow:0 0 0 var(--ink);}
   .quick-add-tile .qname{font-weight:700; font-size:13px; margin-bottom:2px; padding-right:16px;}
   .quick-add-tile .qprice{font-family:'Space Mono',monospace; font-weight:700; color:var(--red); font-size:16px;}
-  .quick-add-tile .qstock{font-size:10.5px; color:#6b5c47;}
+  .quick-add-tile .qstock{font-size:10.5px; color:var(--muted);}
   .quick-add-tile.low{border-color:var(--danger);}
   .quick-add-tile.out{opacity:0.55; cursor:not-allowed;}
   .quick-add-tile .qremove-btn{
@@ -165,17 +201,17 @@
     background:var(--red); color:#fff; border:2px solid var(--ink); font-size:13px; line-height:1;
     display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:700;
   }
-  .quick-add-empty{color:#a3907a; font-style:italic; font-size:13px; padding:10px;}
+  .quick-add-empty{color:var(--muted-light); font-style:italic; font-size:13px; padding:10px;}
 
   .quick-picker{
-    border:3px dashed var(--ink); border-radius:14px; padding:14px; margin-top:12px; background:#FFF5D6;
+    border:3px dashed var(--ink); border-radius:14px; padding:14px; margin-top:12px; background:var(--panel-tint);
   }
   .quick-picker-list{max-height:240px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; margin-top:10px;}
   .quick-picker-item{
     display:flex; justify-content:space-between; align-items:center; gap:8px;
     padding:8px 12px; background:var(--paper); border:2px solid var(--ink); border-radius:10px; font-size:13.5px;
   }
-  .quick-picker-item .qpi-info{font-family:'Space Mono',monospace; font-size:11.5px; color:#6b5c47;}
+  .quick-picker-item .qpi-info{font-family:'Space Mono',monospace; font-size:11.5px; color:var(--muted);}
   .quick-picker-item button{
     font-family:'Bangers',cursive; font-size:11px; text-transform:uppercase;
     background:var(--green); color:#fff; border:2px solid var(--ink); border-radius:8px;
@@ -208,7 +244,19 @@
   }
   nav.tabs button:hover{transform:translate(2px,2px); box-shadow:1px 1px 0 var(--ink);}
   nav.tabs button.active{background:var(--blue); color:#fff; transform:translate(2px,2px); box-shadow:1px 1px 0 var(--ink);}
-  nav.tabs button[data-view="sync"]{background:#EFE4FF; border-color:var(--purple);}
+  .theme-picker{
+    background:var(--panel-tint); border:2px dashed var(--ink); border-radius:12px;
+    padding:10px 12px; margin-bottom:6px;
+  }
+  .theme-picker label{
+    display:block; font-family:'Bangers',cursive; font-size:13px; text-transform:uppercase;
+    letter-spacing:0.02em; margin-bottom:6px;
+  }
+  .theme-picker select{
+    width:100%; padding:8px 10px; border:2px solid var(--ink); border-radius:8px;
+    font-family:'Poppins',sans-serif; font-size:13px; background:var(--paper); color:var(--ink);
+  }
+  nav.tabs button[data-view="sync"]{background:var(--purple-tint); border-color:var(--purple);}
   nav.tabs button[data-view="sync"].active{background:var(--purple); color:#fff; border-color:var(--ink);}
 
   main{max-width:1100px; margin:0 auto; padding:20px 20px 60px;}
@@ -222,7 +270,7 @@
   .panel h2{font-size:20px; text-transform:uppercase; margin-bottom:14px; color:var(--red);}
 
   .form-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px;}
-  .field label{display:block; font-size:11px; text-transform:uppercase; font-weight:700; margin-bottom:5px; color:#6b5c47;}
+  .field label{display:block; font-size:11px; text-transform:uppercase; font-weight:700; margin-bottom:5px; color:var(--muted);}
   .field input{
     width:100%; padding:9px 10px; border:2px solid var(--ink); border-radius:10px;
     font-family:'Space Mono',monospace; font-size:14px; background:var(--paper);
@@ -230,7 +278,7 @@
   .field input:focus{outline:none; box-shadow:0 0 0 3px rgba(47,111,237,0.35); border-color:var(--blue);}
   .profit-preview{
     grid-column:1/-1; font-family:'Space Mono',monospace; font-size:13px;
-    background:#FFF5D6; border:2px dashed var(--ink); padding:9px 12px; border-radius:10px;
+    background:var(--panel-tint); border:2px dashed var(--ink); padding:9px 12px; border-radius:10px;
   }
   .profit-preview strong{color:var(--green);}
 
@@ -254,7 +302,7 @@
   th:last-child{border-radius:0 8px 0 0;}
   td.num, th.num{text-align:right; font-family:'Space Mono',monospace;}
   tr.low-stock td{color:var(--danger);}
-  .empty-row td{text-align:center; padding:24px; color:#a3907a; font-style:italic;}
+  .empty-row td{text-align:center; padding:24px; color:var(--muted-light); font-style:italic;}
 
   .search-bar{display:flex; gap:8px; margin-bottom:12px;}
   .alpha-filter{display:flex; flex-wrap:wrap; gap:5px; margin-bottom:14px;}
@@ -286,10 +334,10 @@
   .sell-suggestion-item:last-child{border-bottom:none; border-radius:0 0 9px 9px;}
   .sell-suggestion-item:hover, .sell-suggestion-item.active{background:var(--mustard);}
   .sell-suggestion-item .sname{font-weight:600;}
-  .sell-suggestion-item .sinfo{font-family:'Space Mono',monospace; font-size:12px; color:#6b5c47; white-space:nowrap;}
-  .sell-suggestion-empty{padding:10px 12px; color:#a3907a; font-style:italic; font-size:13px;}
+  .sell-suggestion-item .sinfo{font-family:'Space Mono',monospace; font-size:12px; color:var(--muted); white-space:nowrap;}
+  .sell-suggestion-empty{padding:10px 12px; color:var(--muted-light); font-style:italic; font-size:13px;}
   select{width:100%; padding:9px 10px; border:2px solid var(--ink); border-radius:10px; font-family:'Poppins',sans-serif; background:var(--paper);}
-  .sell-summary{background:#FFF5D6; border:2px dashed var(--ink); padding:12px; border-radius:12px; margin-bottom:12px; font-family:'Space Mono',monospace; font-size:14px;}
+  .sell-summary{background:var(--panel-tint); border:2px dashed var(--ink); padding:12px; border-radius:12px; margin-bottom:12px; font-family:'Space Mono',monospace; font-size:14px;}
   .sell-summary .total{color:var(--red); font-size:18px; font-weight:700;}
 
   .totals-strip{display:flex; gap:14px; flex-wrap:wrap; margin-top:14px;}
@@ -302,7 +350,7 @@
 
   .sukli-box{
     display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-top:14px;
-    background:#FFF5D6; border:2px dashed var(--ink); border-radius:12px; padding:12px 16px;
+    background:var(--panel-tint); border:2px dashed var(--ink); border-radius:12px; padding:12px 16px;
   }
   .sukli-box .field input{background:var(--paper);}
   .sukli-result{font-family:'Space Mono',monospace; font-size:22px; font-weight:700; color:var(--green);}
@@ -342,14 +390,14 @@
 
   .sync-status{
     display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:6px 12px;
-    border-radius:999px; background:#FFF5D6; border:2px dashed var(--ink); font-family:'Space Mono',monospace;
+    border-radius:999px; background:var(--panel-tint); border:2px dashed var(--ink); font-family:'Space Mono',monospace;
   }
-  .sync-dot{width:9px; height:9px; border-radius:50%; background:#a3907a;}
+  .sync-dot{width:9px; height:9px; border-radius:50%; background:var(--muted-light);}
   .sync-dot.ok{background:var(--green);}
   .sync-dot.err{background:var(--danger);}
-  .sync-help{font-size:12px; color:#6b5c47; line-height:1.6; margin-top:6px;}
+  .sync-help{font-size:12px; color:var(--muted); line-height:1.6; margin-top:6px;}
   .sync-help ol{margin:6px 0 0 18px; padding:0;}
-  .sync-help code{background:#FFF5D6; padding:1px 5px; border-radius:4px; font-family:'Space Mono',monospace;}
+  .sync-help code{background:var(--panel-tint); padding:1px 5px; border-radius:4px; font-family:'Space Mono',monospace;}
 
   @media print{
     body{background:#fff;}
@@ -400,6 +448,15 @@
 </style>
 </head>
 <body>
+<script>
+  // Apply saved theme immediately to avoid a flash of the default theme
+  (function(){
+    try{
+      var saved = localStorage.getItem('tindahanPOS_theme');
+      if(saved && saved !== 'comic') document.documentElement.setAttribute('data-theme', saved);
+    }catch(e){}
+  })();
+</script>
 
 <header class="top">
   <button class="menu-toggle" id="menu-toggle-btn" aria-label="Menu">☰</button>
@@ -420,6 +477,16 @@
 
 <div class="menu-backdrop" id="menu-backdrop"></div>
 <nav class="tabs" id="nav-menu">
+  <div class="theme-picker">
+    <label>Theme</label>
+    <select id="theme-select">
+      <option value="comic">Comic Yellow</option>
+      <option value="ocean">Ocean Blue</option>
+      <option value="bubblegum">Bubblegum Pink</option>
+      <option value="tropical">Tropical Green</option>
+      <option value="midnight">Midnight Comic</option>
+    </select>
+  </div>
   <button data-view="sell" class="active">Magbenta</button>
   <button data-view="products">Imbentaryo</button>
   <button data-view="today">Benta Ngayon</button>
@@ -463,7 +530,7 @@
           <div class="profit-preview">
             Leave "Pcs per Pack" as 1 for loose/tingi items. For a packed item (e.g. 1 pack of biscuits = 10 pcs), put the pack's wholesale price above and 10 here — cost per piece is computed automatically.<br>
             Cost per pc: <strong id="f-cost-preview">₱0.00</strong> &nbsp;|&nbsp; Profit per unit: <strong id="f-profit-preview">₱0.00</strong><br>
-            <span style="color:#6b5c47;">Suggested price (20–30% markup):</span> <strong id="f-suggested-price" style="color:var(--blue);">₱0.00 – ₱0.00</strong>
+            <span style="color:var(--muted);">Suggested price (20–30% markup):</span> <strong id="f-suggested-price" style="color:var(--blue);">₱0.00 – ₱0.00</strong>
           </div>
         </div>
         <div class="row-actions">
@@ -666,7 +733,7 @@
       </p>
       <div class="field" style="margin-top:10px;">
         <label>Firebase Config</label>
-        <textarea id="fb-config-input" rows="7" style="width:100%; padding:10px; border:1.5px solid var(--border); border-radius:3px; font-family:'Space Mono',monospace; font-size:12px; background:var(--cream);" placeholder='const firebaseConfig = {&#10;  apiKey: "...",&#10;  authDomain: "...",&#10;  projectId: "...",&#10;  storageBucket: "...",&#10;  messagingSenderId: "...",&#10;  appId: "..."&#10;};'></textarea>
+        <textarea id="fb-config-input" rows="7" style="width:100%; padding:10px; border:1.5px solid var(--border); border-radius:3px; font-family:'Space Mono',monospace; font-size:12px; background:var(--paper);" placeholder='const firebaseConfig = {&#10;  apiKey: "...",&#10;  authDomain: "...",&#10;  projectId: "...",&#10;  storageBucket: "...",&#10;  messagingSenderId: "...",&#10;  appId: "..."&#10;};'></textarea>
       </div>
       <div class="row-actions">
         <button class="btn" id="fb-connect-btn">Kumonekta</button>
@@ -1005,6 +1072,20 @@
   });
   menuBackdrop.addEventListener('click', closeMenu);
 
+  // ---------- theme picker ----------
+  const LS_THEME = 'tindahanPOS_theme';
+  const themeSelect = document.getElementById('theme-select');
+  const savedTheme = localStorage.getItem(LS_THEME) || 'comic';
+  themeSelect.value = savedTheme;
+  if(savedTheme !== 'comic') document.documentElement.setAttribute('data-theme', savedTheme);
+  themeSelect.addEventListener('change', ()=>{
+    const theme = themeSelect.value;
+    if(theme === 'comic') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem(LS_THEME, theme);
+    if(salesTrendChart) renderSalesTrend();
+  });
+
   // ---------- tabs ----------
   document.querySelectorAll('nav.tabs button').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -1053,7 +1134,7 @@
     const profit = s - cost;
     fCostPreview.textContent = PESO(cost);
     fProfitPreview.textContent = PESO(profit);
-    fProfitPreview.style.color = profit < 0 ? '#C0392B' : '';
+    fProfitPreview.style.color = profit < 0 ? 'var(--danger)' : '';
     const range = suggestedPriceRange(cost);
     fSuggestedPrice.textContent = PESO(range.low) + ' – ' + PESO(range.high);
   }
@@ -1164,7 +1245,7 @@
       const profit = p.selling - cost;
       const low = p.qty <= LOW_STOCK_THRESHOLD;
       const packNote = (p.pcsPerPack && p.pcsPerPack > 1)
-        ? `<div style="font-size:10px; color:#6b5c47;">(${PESO(p.wholesale)} / ${p.pcsPerPack}pcs)</div>` : '';
+        ? `<div style="font-size:10px; color:var(--muted);">(${PESO(p.wholesale)} / ${p.pcsPerPack}pcs)</div>` : '';
       const restockChecked = p.restockFlagged ? 'checked' : '';
       return `<tr class="${low?'low-stock':''}">
         <td class="pname">${escapeHtml(p.name)}${low?'<span class="stock-badge">Mababa</span>':''}</td>
@@ -1947,7 +2028,7 @@
           <tbody>${sellerRows(slowSellers)}</tbody>
         </table>
         ${noSaleProducts.length > 0 ? `
-        <div style="margin-top:10px; font-size:11.5px; color:#6b5c47;">
+        <div style="margin-top:10px; font-size:11.5px; color:var(--muted);">
           Walang benta sa panahong ito: ${noSaleProducts.map(p=>escapeHtml(p.name)).join(', ')}
         </div>` : ''}
       </div>` : ''}
