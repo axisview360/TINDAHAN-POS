@@ -201,6 +201,8 @@
   }
   nav.tabs button:hover{transform:translate(2px,2px); box-shadow:1px 1px 0 var(--ink);}
   nav.tabs button.active{background:var(--blue); color:#fff; transform:translate(2px,2px); box-shadow:1px 1px 0 var(--ink);}
+  nav.tabs button[data-view="sync"]{background:#EFE4FF; border-color:var(--purple);}
+  nav.tabs button[data-view="sync"].active{background:var(--purple); color:#fff; border-color:var(--ink);}
 
   main{max-width:1100px; margin:0 auto; padding:20px 20px 60px;}
   .view{display:none;}
@@ -290,6 +292,14 @@
   .totals-strip .stat:nth-child(3){background:var(--green);}
   .totals-strip .stat .label{font-size:10px; text-transform:uppercase; opacity:0.85;}
   .totals-strip .stat .val{font-family:'Space Mono',monospace; font-size:18px; font-weight:700;}
+
+  .sukli-box{
+    display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-top:14px;
+    background:#FFF5D6; border:2px dashed var(--ink); border-radius:12px; padding:12px 16px;
+  }
+  .sukli-box .field input{background:var(--paper);}
+  .sukli-result{font-family:'Space Mono',monospace; font-size:22px; font-weight:700; color:var(--green);}
+  .sukli-result.short{color:var(--danger); font-size:15px;}
 
   .report-controls{display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-bottom:14px;}
 
@@ -408,6 +418,8 @@
   <button data-view="today">Benta Ngayon</button>
   <button data-view="report">Ulat</button>
   <button data-view="lowstock">Mababang Stock</button>
+  <button data-view="restocklist">Restock List</button>
+  <button data-view="trend">Sales Trend</button>
   <button data-view="sync">Firebase Sync</button>
 </nav>
 
@@ -504,6 +516,7 @@
             <th class="num">Selling</th>
             <th class="num">Profit/Unit</th>
             <th class="num">Qty</th>
+            <th class="no-print">Restock?</th>
             <th></th>
           </tr>
         </thead>
@@ -565,6 +578,13 @@
       </table>
       </div>
       <div class="totals-strip" id="cart-totals"></div>
+      <div class="sukli-box">
+        <div class="field" style="max-width:200px; margin-bottom:0;">
+          <label>Bayad ng Customer (₱)</label>
+          <input type="number" id="amount-received" step="0.01" min="0" placeholder="0.00">
+        </div>
+        <div class="sukli-result" id="sukli-result">Sukli: ₱0.00</div>
+      </div>
       <div class="row-actions">
         <button class="btn" id="checkout-btn">Ibenta Lahat</button>
       </div>
@@ -675,12 +695,55 @@
     </div>
   </section>
 
+  <!-- RESTOCK LIST VIEW -->
+  <section class="view" id="view-restocklist">
+    <div class="panel">
+      <h2>Restock List</h2>
+      <p class="sync-help">Ito ang listahan mo pag-bili — check-in mo ang mga produktong nagsisimula sa Imbentaryo o Mababang Stock gamit ang "Restock?" checkbox. Pag na-check "Nabili" dito, aalisin sa listahan.</p>
+      <div style="overflow-x:auto; margin-top:10px;">
+      <table>
+        <thead>
+          <tr>
+            <th>Produkto</th>
+            <th class="num">Kasalukuyang Qty</th>
+            <th class="num">Cost/pc</th>
+            <th class="no-print">Nabili?</th>
+          </tr>
+        </thead>
+        <tbody id="restocklist-tbody"></tbody>
+      </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- SALES TREND VIEW -->
+  <section class="view" id="view-trend">
+    <div class="panel">
+      <div class="flex-between">
+        <h2 style="margin-bottom:0;">Sales Trend</h2>
+        <div class="field" style="max-width:160px; margin-bottom:0;">
+          <label>Show Last</label>
+          <select id="trend-days">
+            <option value="7">7 days</option>
+            <option value="14" selected>14 days</option>
+            <option value="30">30 days</option>
+          </select>
+        </div>
+      </div>
+      <p class="sync-help">Daily revenue and profit trend based on your sales history.</p>
+      <div style="margin-top:14px; height:320px;">
+        <canvas id="sales-trend-chart"></canvas>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <div class="toast" id="toast"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
 (function(){
   const LS_PRODUCTS = 'tindahanPOS_products';
@@ -738,6 +801,7 @@
       sales = snap.docs.map(d=>({id:d.id, ...d.data()}));
       saveSales();
       renderToday();
+      if(typeof renderSalesTrend === 'function') renderSalesTrend();
       document.getElementById('fb-last-sync').textContent = 'Huling sync: ' + new Date().toLocaleTimeString('en-PH');
     }, ()=> setSyncStatus('err','Sync error (sales)'));
   }
@@ -832,6 +896,8 @@
       if(btn.dataset.view === 'sell') renderSellSelect();
       if(btn.dataset.view === 'today') renderToday();
       if(btn.dataset.view === 'lowstock') renderLowStock();
+      if(btn.dataset.view === 'restocklist') renderRestockList();
+      if(btn.dataset.view === 'trend') renderSalesTrend();
       closeMenu();
     });
   });
@@ -970,7 +1036,7 @@
     list = list.sort((a,b)=>a.name.localeCompare(b.name));
     if(list.length === 0){
       const msg = selectedLetter !== 'all' ? `Walang produktong nagsisimula sa "${selectedLetter}".` : 'Walang produkto.';
-      tbody.innerHTML = `<tr class="empty-row"><td colspan="6">${msg}</td></tr>`;
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="7">${msg}</td></tr>`;
       return;
     }
     tbody.innerHTML = list.map(p=>{
@@ -979,12 +1045,16 @@
       const low = p.qty <= LOW_STOCK_THRESHOLD;
       const packNote = (p.pcsPerPack && p.pcsPerPack > 1)
         ? `<div style="font-size:10px; color:#6b5c47;">(${PESO(p.wholesale)} / ${p.pcsPerPack}pcs)</div>` : '';
+      const restockChecked = p.restockFlagged ? 'checked' : '';
       return `<tr class="${low?'low-stock':''}">
         <td class="pname">${escapeHtml(p.name)}${low?'<span class="stock-badge">Mababa</span>':''}</td>
         <td class="num">${PESO(cost)}${packNote}</td>
         <td class="num">${PESO(p.selling)}</td>
         <td class="num">${PESO(profit)}</td>
         <td class="num">${p.qty}</td>
+        <td class="no-print" style="text-align:center;">
+          <input type="checkbox" ${restockChecked} onchange="TindahanPOS.toggleRestock('${p.id}', this.checked)">
+        </td>
         <td class="no-print">
           <button class="btn small outline" onclick="TindahanPOS.editProduct('${p.id}')">Edit</button>
           <button class="btn small red" onclick="TindahanPOS.deleteProduct('${p.id}')">Delete</button>
@@ -992,6 +1062,7 @@
       </tr>`;
     }).join('');
     renderLowStock();
+    renderRestockList();
   }
   document.getElementById('product-search').addEventListener('input', renderProducts);
 
@@ -1038,7 +1109,31 @@
     if(!p) return;
     p.restockFlagged = flagged;
     saveProducts();
+    renderRestockList();
     if(fbReady) fbDb.collection('products').doc(id).update({restockFlagged: flagged}).catch(err=>toast('Sync error: '+err.message));
+  }
+
+  // ---------- restock list (shopping list) ----------
+  function renderRestockList(){
+    const tbody = document.getElementById('restocklist-tbody');
+    if(!tbody) return;
+    const list = products.filter(p=>p.restockFlagged)
+                          .sort((a,b)=>a.qty - b.qty || a.name.localeCompare(b.name));
+    if(list.length === 0){
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="4">Wala pang produkto sa restock list. Mag-check sa Imbentaryo o Mababang Stock.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map(p=>{
+      const cost = costPerPiece(p);
+      return `<tr class="${p.qty <= LOW_STOCK_THRESHOLD ? 'low-stock' : ''}">
+        <td class="pname">${escapeHtml(p.name)}</td>
+        <td class="num">${p.qty}</td>
+        <td class="num">${PESO(cost)}</td>
+        <td class="no-print" style="text-align:center;">
+          <input type="checkbox" onchange="TindahanPOS.toggleRestock('${p.id}', false)">
+        </td>
+      </tr>`;
+    }).join('');
   }
 
   function escapeHtml(s){
@@ -1337,7 +1432,33 @@
       <div class="stat"><div class="label">Total</div><div class="val">${PESO(totalRevenue)}</div></div>
       <div class="stat"><div class="label">Est. Profit</div><div class="val">${PESO(totalProfit)}</div></div>
     `;
+    updateSukli();
   }
+
+  function cartTotal(){
+    return cart.reduce((a,c)=>a+c.unitPrice*c.qty, 0);
+  }
+
+  function updateSukli(){
+    const resultEl = document.getElementById('sukli-result');
+    if(!resultEl) return;
+    const received = parseFloat(document.getElementById('amount-received').value);
+    const total = cartTotal();
+    if(isNaN(received)){
+      resultEl.textContent = 'Sukli: ₱0.00';
+      resultEl.classList.remove('short');
+      return;
+    }
+    const change = received - total;
+    if(change < 0){
+      resultEl.textContent = 'Kulang ng ' + PESO(Math.abs(change));
+      resultEl.classList.add('short');
+    } else {
+      resultEl.textContent = 'Sukli: ' + PESO(change);
+      resultEl.classList.remove('short');
+    }
+  }
+  document.getElementById('amount-received').addEventListener('input', updateSukli);
 
   function removeCartItem(idx){
     cart.splice(idx, 1);
@@ -1395,10 +1516,12 @@
 
     toast(`Nabenta: ${totalItems} items — ${PESO(totalRevenue)} total`);
     cart = [];
+    document.getElementById('amount-received').value = '';
     renderProducts();
     renderSellSuggestions();
     updateSellSummary();
     renderCart();
+    if(typeof renderSalesTrend === 'function') renderSalesTrend();
 
     if(fbReady){
       newSales.forEach(({productId, newQty, saleId, saleRecord})=>{
@@ -1438,6 +1561,65 @@
       <div class="stat"><div class="label">Total Revenue</div><div class="val">${PESO(totalRevenue)}</div></div>
       <div class="stat"><div class="label">Total Profit</div><div class="val">${PESO(totalProfit)}</div></div>
     `;
+  }
+
+  // ---------- sales trend chart ----------
+  let salesTrendChart = null;
+  const trendDaysSelect = document.getElementById('trend-days');
+  if(trendDaysSelect) trendDaysSelect.addEventListener('change', renderSalesTrend);
+
+  function renderSalesTrend(){
+    const canvas = document.getElementById('sales-trend-chart');
+    if(!canvas || typeof Chart === 'undefined') return;
+    const days = parseInt(document.getElementById('trend-days').value, 10) || 14;
+
+    const dayKeys = [];
+    const dayLabels = [];
+    const today = new Date();
+    for(let i = days - 1; i >= 0; i--){
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      dayKeys.push(todayStr(d));
+      dayLabels.push(d.toLocaleDateString('en-PH', {month:'short', day:'numeric'}));
+    }
+
+    const revenueByDay = Object.fromEntries(dayKeys.map(k=>[k,0]));
+    const profitByDay = Object.fromEntries(dayKeys.map(k=>[k,0]));
+    sales.forEach(s=>{
+      const k = todayStr(s.timestamp);
+      if(k in revenueByDay){
+        revenueByDay[k] += s.revenue;
+        profitByDay[k] += s.profit;
+      }
+    });
+
+    const revenueData = dayKeys.map(k=>Number(revenueByDay[k].toFixed(2)));
+    const profitData = dayKeys.map(k=>Number(profitByDay[k].toFixed(2)));
+
+    if(salesTrendChart){
+      salesTrendChart.data.labels = dayLabels;
+      salesTrendChart.data.datasets[0].data = revenueData;
+      salesTrendChart.data.datasets[1].data = profitData;
+      salesTrendChart.update();
+      return;
+    }
+
+    salesTrendChart = new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: dayLabels,
+        datasets: [
+          { label: 'Revenue', data: revenueData, backgroundColor: '#2F6FED', borderRadius: 4 },
+          { label: 'Profit', data: profitData, type: 'line', borderColor: '#2CAE6B', backgroundColor: '#2CAE6B', tension: 0.3, pointRadius: 3 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'top' } },
+        scales: { y: { beginAtZero: true } }
+      }
+    });
   }
 
   // ---------- report (custom date range) ----------
