@@ -832,6 +832,18 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
+  // Minimal inline service worker (via Blob URL) — required by Android Chrome
+  // for the "Install app" prompt to appear, even with a valid manifest.
+  if('serviceWorker' in navigator){
+    var swCode = "self.addEventListener('install',function(e){self.skipWaiting();});" +
+                 "self.addEventListener('activate',function(e){self.clients.claim();});" +
+                 "self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(function(){return caches.match(e.request);}));});";
+    var swBlob = new Blob([swCode], {type: 'text/javascript'});
+    var swUrl = URL.createObjectURL(swBlob);
+    navigator.serviceWorker.register(swUrl).catch(function(err){ console.log('Service worker registration failed:', err); });
+  }
+</script>
+<script>
 (function(){
   const LS_PRODUCTS = 'tindahanPOS_products';
   const LS_SALES = 'tindahanPOS_sales';
