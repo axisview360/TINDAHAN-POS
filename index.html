@@ -163,8 +163,16 @@
   .price-card .pprice{font-family:'Space Mono',monospace; font-weight:700; font-size:21px; color:var(--red);}
   .price-card .pstock{font-size:11.5px; color:var(--muted); margin-top:2px;}
   .price-card.low .pstock{color:var(--danger); font-weight:700;}
+  .price-card .pcard-actions{display:flex; gap:6px; flex-wrap:wrap; margin-top:7px;}
+  .price-card .pcart-btn{
+    font-family:'Bangers',cursive; font-size:11px; letter-spacing:0.02em; text-transform:uppercase;
+    background:var(--green); color:#fff; border:2px solid var(--ink); border-radius:8px;
+    padding:4px 10px; cursor:pointer;
+  }
+  .price-card .pcart-btn:hover{background:var(--ink);}
+  .price-card .pcart-btn:disabled{background:var(--muted-light); color:var(--paper); cursor:not-allowed;}
   .price-card .pupdate-btn{
-    margin-top:7px; font-family:'Bangers',cursive; font-size:11px; letter-spacing:0.02em; text-transform:uppercase;
+    font-family:'Bangers',cursive; font-size:11px; letter-spacing:0.02em; text-transform:uppercase;
     background:var(--blue); color:#fff; border:2px solid var(--ink); border-radius:8px;
     padding:4px 10px; cursor:pointer;
   }
@@ -1142,21 +1150,23 @@
   });
 
   // ---------- tabs ----------
+  function activateView(viewName){
+    document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    const btn = document.querySelector('nav.tabs button[data-view="'+viewName+'"]');
+    if(btn) btn.classList.add('active');
+    document.getElementById('view-'+viewName).classList.add('active');
+    if(viewName === 'sell') renderSellSelect();
+    if(viewName === 'today') renderToday();
+    if(viewName === 'lowstock') renderLowStock();
+    if(viewName === 'restocklist') renderRestockList();
+    if(viewName === 'trend') renderSalesTrend();
+    if(viewName === 'ewallet') renderEwallet();
+    if(viewName === 'closing') renderDailyClosing();
+    closeMenu();
+  }
   document.querySelectorAll('nav.tabs button').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
-      document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('view-'+btn.dataset.view).classList.add('active');
-      if(btn.dataset.view === 'sell') renderSellSelect();
-      if(btn.dataset.view === 'today') renderToday();
-      if(btn.dataset.view === 'lowstock') renderLowStock();
-      if(btn.dataset.view === 'restocklist') renderRestockList();
-      if(btn.dataset.view === 'trend') renderSalesTrend();
-      if(btn.dataset.view === 'ewallet') renderEwallet();
-      if(btn.dataset.view === 'closing') renderDailyClosing();
-      closeMenu();
-    });
+    btn.addEventListener('click', ()=> activateView(btn.dataset.view));
   });
 
   // ---------- product form ----------
@@ -1426,9 +1436,14 @@
       return `<div class="price-card ${low?'low':''}">
         <div class="pname">${escapeHtml(p.name)}</div>
         <div class="pprice">${PESO(p.selling)}</div>
-        <div class="pstock">Stock: ${p.qty}${low?' — mababa na!':''}</div>
+        <div class="pstock">Stock: ${availableStock(p)}${low?' — mababa na!':''}${cartQtyFor(p.id) > 0 ? ' ('+cartQtyFor(p.id)+' sa cart)' : ''}</div>
         <div class="pstock" style="color:var(--blue);">Suggested (20–30%): ${(()=>{const r=suggestedPriceRange(costPerPiece(p)); return PESO(r.low)+' – '+PESO(r.high);})()}</div>
-        <button class="pupdate-btn" onclick="TindahanPOS.startPriceEdit('${p.id}')">I-update ang presyo</button>
+        <div class="pcard-actions">
+          ${availableStock(p) > 0
+            ? `<button class="pcart-btn" onclick="TindahanPOS.addToCartFromPriceCheck('${p.id}')">+ Cart</button>`
+            : `<button class="pcart-btn" disabled>Ubos na!</button>`}
+          <button class="pupdate-btn" onclick="TindahanPOS.startPriceEdit('${p.id}')">I-update ang presyo</button>
+        </div>
       </div>`;
     }).join('');
     const editInput = document.getElementById('pc-edit-input');
@@ -1442,6 +1457,23 @@
     }
   }
   pcInput.addEventListener('input', ()=>{ pcEditingId = null; renderPriceCheck(); });
+
+  function addToCartFromPriceCheck(id){
+    const p = products.find(p=>p.id === id);
+    if(!p) return;
+    if(availableStock(p) < 1){ toast('Ubos na ang stock ni ' + p.name + '.'); return; }
+    const existing = cart.find(c=>c.productId === p.id);
+    if(existing){
+      existing.qty += 1;
+    } else {
+      cart.push({ productId: p.id, name: p.name, qty: 1, unitPrice: p.selling, unitCost: costPerPiece(p) });
+    }
+    toast('Idinagdag sa cart: 1 x ' + p.name);
+    renderPriceCheck();
+    renderCart();
+    renderQuickAddGrid();
+    activateView('sell');
+  }
 
   function startPriceEdit(id){
     pcEditingId = id;
@@ -2258,7 +2290,7 @@
   });
 
   // expose for inline handlers
-  window.TindahanPOS = { editProduct, deleteProduct, startPriceEdit, cancelPriceEdit, savePriceEdit, selectSellProduct, toggleRestock, removeCartItem, quickAddToCart, addQuickShortcut, removeQuickShortcut };
+  window.TindahanPOS = { editProduct, deleteProduct, startPriceEdit, cancelPriceEdit, savePriceEdit, selectSellProduct, toggleRestock, removeCartItem, quickAddToCart, addQuickShortcut, removeQuickShortcut, addToCartFromPriceCheck };
 
   // ---------- init ----------
   renderProducts();
