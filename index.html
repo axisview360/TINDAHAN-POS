@@ -488,13 +488,14 @@
     </select>
   </div>
   <button data-view="sell" class="active">Magbenta</button>
+  <button data-view="ewallet">Cash In/Out</button>
   <button data-view="products">Imbentaryo</button>
   <button data-view="today">Benta Ngayon</button>
+  <button data-view="closing">Daily Closing</button>
   <button data-view="report">Ulat</button>
   <button data-view="lowstock">Mababang Stock</button>
   <button data-view="restocklist">Restock List</button>
   <button data-view="trend">Sales Trend</button>
-  <button data-view="ewallet">Cash In/Out</button>
   <button data-view="sync">Firebase Sync</button>
 </nav>
 
@@ -691,6 +692,45 @@
     </div>
   </section>
 
+  <!-- DAILY CLOSING VIEW -->
+  <section class="view" id="view-closing">
+    <div class="panel">
+      <h2>Daily Closing (<span id="closing-date-label"></span>)</h2>
+      <p class="sync-help">Ang "Expected Cash" ay awtomatikong sinusubaybayan — dumadagdag sa bawat benta at Cash In, bumabawas sa bawat Cash Out. Dito mo lang ito ikukumpara sa aktwal na bilang mo.</p>
+      <div class="field" style="max-width:220px; margin-top:10px;">
+        <label>Actual Cash Counted (₱)</label>
+        <input type="number" id="closing-actual-cash" min="0" step="0.01" placeholder="0.00">
+      </div>
+      <div class="totals-strip" id="closing-computed"></div>
+      <div class="sukli-box">
+        <div class="sukli-result" id="closing-variance">I-type ang actual cash para makita ang variance.</div>
+      </div>
+      <div class="row-actions">
+        <button class="btn" id="closing-save-btn">I-save ang Closing</button>
+      </div>
+      <p class="sync-help">Pag na-save, ia-adjust din ang "Cash on Hand" para tumugma sa aktwal mong binilang — para tama ang simula bukas.</p>
+    </div>
+
+    <div class="panel">
+      <h2>Closing History</h2>
+      <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Petsa</th>
+            <th class="num">Sales</th>
+            <th class="num">E-wallet Effect</th>
+            <th class="num">Expected</th>
+            <th class="num">Actual</th>
+            <th class="num">Variance</th>
+          </tr>
+        </thead>
+        <tbody id="closing-history-tbody"></tbody>
+      </table>
+      </div>
+    </div>
+  </section>
+
   <!-- REPORT VIEW -->
   <section class="view" id="view-report">
     <div class="panel">
@@ -860,6 +900,7 @@
           <select id="ewallet-adjust-wallet">
             <option value="gcash">GCash</option>
             <option value="maribank">Maribank</option>
+            <option value="cash">Cash on Hand (Drawer)</option>
           </select>
         </div>
         <div class="field">
@@ -918,19 +959,23 @@
   const LS_THRESHOLD = 'tindahanPOS_threshold';
   const LS_EWALLET_BAL = 'tindahanPOS_ewalletBalances';
   const LS_EWALLET_TX = 'tindahanPOS_ewalletTx';
+  const LS_CLOSINGS = 'tindahanPOS_dailyClosings';
   const PESO = n => '₱' + Number(n).toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2});
   let LOW_STOCK_THRESHOLD = parseInt(localStorage.getItem(LS_THRESHOLD), 10) || 5;
 
   let products = JSON.parse(localStorage.getItem(LS_PRODUCTS) || '[]');
   let sales = JSON.parse(localStorage.getItem(LS_SALES) || '[]');
-  let ewalletBalances = JSON.parse(localStorage.getItem(LS_EWALLET_BAL) || '{"gcash":0,"maribank":0}');
+  let ewalletBalances = JSON.parse(localStorage.getItem(LS_EWALLET_BAL) || '{"gcash":0,"maribank":0,"cash":0}');
+  if(ewalletBalances.cash === undefined) ewalletBalances.cash = 0;
   let ewalletTx = JSON.parse(localStorage.getItem(LS_EWALLET_TX) || '[]');
-  let fbDb = null, fbReady = false, unsubProducts = null, unsubSales = null, unsubEwalletBal = null, unsubEwalletTx = null;
+  let dailyClosings = JSON.parse(localStorage.getItem(LS_CLOSINGS) || '[]');
+  let fbDb = null, fbReady = false, unsubProducts = null, unsubSales = null, unsubEwalletBal = null, unsubEwalletTx = null, unsubClosings = null;
 
   function saveProducts(){ localStorage.setItem(LS_PRODUCTS, JSON.stringify(products)); }
   function saveSales(){ localStorage.setItem(LS_SALES, JSON.stringify(sales)); }
   function saveEwalletBalances(){ localStorage.setItem(LS_EWALLET_BAL, JSON.stringify(ewalletBalances)); }
   function saveEwalletTx(){ localStorage.setItem(LS_EWALLET_TX, JSON.stringify(ewalletTx)); }
+  function saveClosings(){ localStorage.setItem(LS_CLOSINGS, JSON.stringify(dailyClosings)); }
 
   function toast(msg){
     const t = document.getElementById('toast');
@@ -965,6 +1010,7 @@
     if(unsubSales) unsubSales();
     if(unsubEwalletBal) unsubEwalletBal();
     if(unsubEwalletTx) unsubEwalletTx();
+    if(unsubClosings) unsubClosings();
     unsubProducts = fbDb.collection('products').onSnapshot(snap=>{
       products = snap.docs.map(d=>({id:d.id, ...d.data()}));
       saveProducts();
@@ -976,6 +1022,7 @@
       saveSales();
       renderToday();
       if(typeof renderSalesTrend === 'function') renderSalesTrend();
+      if(typeof renderDailyClosing === 'function') renderDailyClosing();
       document.getElementById('fb-last-sync').textContent = 'Huling sync: ' + new Date().toLocaleTimeString('en-PH');
     }, ()=> setSyncStatus('err','Sync error (sales)'));
     unsubEwalletBal = fbDb.collection('meta').doc('ewalletBalances').onSnapshot(doc=>{
@@ -989,7 +1036,13 @@
       ewalletTx = snap.docs.map(d=>({id:d.id, ...d.data()}));
       saveEwalletTx();
       if(typeof renderEwalletTxTable === 'function') renderEwalletTxTable();
+      if(typeof renderDailyClosing === 'function') renderDailyClosing();
     }, ()=> setSyncStatus('err','Sync error (ewallet tx)'));
+    unsubClosings = fbDb.collection('dailyClosings').onSnapshot(snap=>{
+      dailyClosings = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      saveClosings();
+      if(typeof renderClosingHistory === 'function') renderClosingHistory();
+    }, ()=> setSyncStatus('err','Sync error (closings)'));
   }
 
   function connectFirebase(config, silent){
@@ -1099,6 +1152,7 @@
       if(btn.dataset.view === 'restocklist') renderRestockList();
       if(btn.dataset.view === 'trend') renderSalesTrend();
       if(btn.dataset.view === 'ewallet') renderEwallet();
+      if(btn.dataset.view === 'closing') renderDailyClosing();
       closeMenu();
     });
   });
@@ -1714,6 +1768,8 @@
 
     saveProducts();
     saveSales();
+    ewalletBalances.cash = (ewalletBalances.cash||0) + totalRevenue;
+    saveEwalletBalances();
 
     toast(`Nabenta: ${totalItems} items — ${PESO(totalRevenue)} total`);
     cart = [];
@@ -1723,6 +1779,8 @@
     updateSellSummary();
     renderCart();
     if(typeof renderSalesTrend === 'function') renderSalesTrend();
+    if(typeof renderDailyClosing === 'function') renderDailyClosing();
+    if(typeof renderEwalletBalances === 'function') renderEwalletBalances();
 
     if(fbReady){
       newSales.forEach(({productId, newQty, saleId, saleRecord})=>{
@@ -1730,6 +1788,7 @@
         const {id: _sid, ...saleData} = saleRecord;
         fbDb.collection('sales').doc(saleId).set(saleData).catch(err=>toast('Sync error: '+err.message));
       });
+      fbDb.collection('meta').doc('ewalletBalances').set(ewalletBalances, {merge:true}).catch(err=>toast('Sync error: '+err.message));
     }
   });
 
@@ -1836,6 +1895,7 @@
     el.innerHTML = `
       <div class="stat" style="background:var(--blue);"><div class="label">GCash Balance</div><div class="val">${PESO(ewalletBalances.gcash||0)}</div></div>
       <div class="stat" style="background:var(--green);"><div class="label">Maribank Balance</div><div class="val">${PESO(ewalletBalances.maribank||0)}</div></div>
+      <div class="stat" style="background:var(--mustard); color:var(--ink);"><div class="label">Cash on Hand</div><div class="val">${PESO(ewalletBalances.cash||0)}</div></div>
       <div class="stat" style="background:var(--purple);"><div class="label">Total Fee Income</div><div class="val">${PESO(totalFees)}</div></div>
     `;
   }
@@ -1896,8 +1956,13 @@
       toast('Kulang ang ' + (wallet==='gcash'?'GCash':'Maribank') + ' balance mo.');
       return;
     }
-    if(type === 'cashin') ewalletBalances[wallet] = (ewalletBalances[wallet]||0) - amount;
-    else ewalletBalances[wallet] = (ewalletBalances[wallet]||0) + amount;
+    if(type === 'cashin'){
+      ewalletBalances[wallet] = (ewalletBalances[wallet]||0) - amount;
+      ewalletBalances.cash = (ewalletBalances.cash||0) + (amount + fee);
+    } else {
+      ewalletBalances[wallet] = (ewalletBalances[wallet]||0) + amount;
+      ewalletBalances.cash = (ewalletBalances.cash||0) - (amount - fee);
+    }
 
     const txId = 'ew_'+Date.now();
     const txRecord = { id: txId, wallet, type, amount, fee, timestamp: new Date().toISOString() };
@@ -1906,6 +1971,7 @@
     saveEwalletBalances();
     saveEwalletTx();
     renderEwallet();
+    if(typeof renderDailyClosing === 'function') renderDailyClosing();
     toast('Na-record ang transaksyon.');
 
     document.getElementById('ewallet-amount').value = '';
@@ -1927,9 +1993,119 @@
     ewalletBalances[wallet] = newBalance;
     saveEwalletBalances();
     renderEwalletBalances();
-    toast('Na-set ang ' + (wallet==='gcash'?'GCash':'Maribank') + ' balance.');
+    const walletLabel = wallet==='gcash'?'GCash':(wallet==='maribank'?'Maribank':'Cash on Hand');
+    toast('Na-set ang ' + walletLabel + ' balance.');
     document.getElementById('ewallet-adjust-balance').value = '';
     if(fbReady) fbDb.collection('meta').doc('ewalletBalances').set(ewalletBalances, {merge:true}).catch(err=>toast('Sync error: '+err.message));
+  });
+
+  // ---------- daily closing ----------
+  function ewalletCashEffectFor(dateStr){
+    return ewalletTx.filter(t=>todayStr(t.timestamp) === dateStr).reduce((sum,t)=>{
+      return sum + (t.type === 'cashin' ? (t.amount + t.fee) : -(t.amount - t.fee));
+    }, 0);
+  }
+
+  function salesRevenueFor(dateStr){
+    return sales.filter(s=>todayStr(s.timestamp) === dateStr).reduce((a,s)=>a+s.revenue, 0);
+  }
+
+  function renderDailyClosing(){
+    document.getElementById('closing-date-label').textContent = new Date().toLocaleDateString('en-PH', {month:'short', day:'numeric', year:'numeric'});
+    updateClosingComputed();
+    renderClosingHistory();
+  }
+
+  function updateClosingComputed(){
+    const today = todayStr();
+    const salesRevenue = salesRevenueFor(today);
+    const ewalletEffect = ewalletCashEffectFor(today);
+    const expectedCash = ewalletBalances.cash || 0; // live running total — already includes all sales & e-wallet effects
+
+    document.getElementById('closing-computed').innerHTML = `
+      <div class="stat" style="background:var(--blue);"><div class="label">Today's Sales</div><div class="val">${PESO(salesRevenue)}</div></div>
+      <div class="stat" style="background:var(--purple);"><div class="label">Today's E-wallet Effect</div><div class="val">${ewalletEffect>=0?'+':''}${PESO(ewalletEffect)}</div></div>
+      <div class="stat" style="background:var(--green);"><div class="label">Expected Cash (Live)</div><div class="val">${PESO(expectedCash)}</div></div>
+    `;
+
+    const actualInput = document.getElementById('closing-actual-cash');
+    const varianceEl = document.getElementById('closing-variance');
+    const actualCash = parseFloat(actualInput.value);
+    if(isNaN(actualCash)){
+      varianceEl.textContent = 'I-type ang actual cash para makita ang variance.';
+      varianceEl.classList.remove('short');
+      return;
+    }
+    const variance = actualCash - expectedCash;
+    if(Math.abs(variance) < 0.01){
+      varianceEl.textContent = 'Balanse! ₱0.00 variance.';
+      varianceEl.classList.remove('short');
+    } else if(variance < 0){
+      varianceEl.textContent = 'Kulang ng ' + PESO(Math.abs(variance));
+      varianceEl.classList.add('short');
+    } else {
+      varianceEl.textContent = 'Sobra ng ' + PESO(variance);
+      varianceEl.classList.remove('short');
+    }
+  }
+
+  document.getElementById('closing-actual-cash').addEventListener('input', updateClosingComputed);
+
+  function renderClosingHistory(){
+    const tbody = document.getElementById('closing-history-tbody');
+    if(!tbody) return;
+    const list = [...dailyClosings].sort((a,b)=>b.date.localeCompare(a.date));
+    if(list.length === 0){
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Wala pang naka-save na closing.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map(c=>{
+      const varClass = Math.abs(c.variance) < 0.01 ? '' : (c.variance < 0 ? 'style="color:var(--danger);"' : 'style="color:var(--green);"');
+      return `<tr>
+        <td class="mono">${c.date}</td>
+        <td class="num">${PESO(c.salesRevenue)}</td>
+        <td class="num">${c.ewalletEffect>=0?'+':''}${PESO(c.ewalletEffect)}</td>
+        <td class="num">${PESO(c.expectedCash)}</td>
+        <td class="num">${PESO(c.actualCash)}</td>
+        <td class="num" ${varClass}>${c.variance>=0?'+':''}${PESO(c.variance)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  document.getElementById('closing-save-btn').addEventListener('click', ()=>{
+    const today = todayStr();
+    const actualCash = parseFloat(document.getElementById('closing-actual-cash').value);
+    if(isNaN(actualCash)){ toast('Ilagay ang actual cash na binilang mo.'); return; }
+
+    const salesRevenue = salesRevenueFor(today);
+    const ewalletEffect = ewalletCashEffectFor(today);
+    const expectedCash = ewalletBalances.cash || 0;
+    const variance = actualCash - expectedCash;
+
+    const closingId = 'cl_'+Date.now();
+    const record = {
+      id: closingId, date: today, salesRevenue, ewalletEffect,
+      expectedCash, actualCash, variance,
+      gcashBalance: ewalletBalances.gcash||0, maribankBalance: ewalletBalances.maribank||0,
+      timestamp: new Date().toISOString()
+    };
+    dailyClosings.push(record);
+    saveClosings();
+
+    // reconcile the running Cash on Hand total to match what was actually counted
+    ewalletBalances.cash = actualCash;
+    saveEwalletBalances();
+    renderEwalletBalances();
+
+    renderClosingHistory();
+    updateClosingComputed();
+    toast('Na-save ang closing. Na-adjust din ang Cash on Hand sa ' + PESO(actualCash) + '.');
+
+    if(fbReady){
+      fbDb.collection('meta').doc('ewalletBalances').set(ewalletBalances, {merge:true}).catch(err=>toast('Sync error: '+err.message));
+      const {id:_cid, ...closingData} = record;
+      fbDb.collection('dailyClosings').doc(closingId).set(closingData).catch(err=>toast('Sync error: '+err.message));
+    }
   });
 
   // ---------- report (custom date range) ----------
@@ -2087,6 +2263,7 @@
   renderSellSelect();
   renderToday();
   renderEwallet();
+  renderDailyClosing();
 
   const savedFbConfig = localStorage.getItem(LS_FB_CONFIG);
   if(savedFbConfig){
