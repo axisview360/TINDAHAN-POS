@@ -804,7 +804,10 @@
         </div>
       </div>
       <p class="sync-help">Mga produktong kailangan nang i-restock — mababa na o naubos na ang stock. I-check ang "Tag as Restock" para markahan mo kung anong kailangan mong bilhin.</p>
-      <div style="overflow-x:auto; margin-top:10px;">
+      <div class="search-bar" style="margin-top:10px;">
+        <input type="text" id="lowstock-search" placeholder="Search product...">
+      </div>
+      <div style="overflow-x:auto;">
       <table>
         <thead>
           <tr>
@@ -1348,10 +1351,13 @@
   function renderLowStock(){
     const tbody = document.getElementById('lowstock-tbody');
     if(!tbody) return;
-    const list = products.filter(p=>p.qty <= LOW_STOCK_THRESHOLD)
+    const searchInput = document.getElementById('lowstock-search');
+    const q = searchInput ? searchInput.value.trim().toLowerCase() : '';
+    const list = products.filter(p=>p.qty <= LOW_STOCK_THRESHOLD && p.name.toLowerCase().includes(q))
                           .sort((a,b)=>a.qty - b.qty);
     if(list.length === 0){
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="4">Walang mababang stock — okay lahat!</td></tr>';
+      const msg = q ? `Walang mababang stock na tumutugma sa "${q}".` : 'Walang mababang stock — okay lahat!';
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="4">${msg}</td></tr>`;
       return;
     }
     tbody.innerHTML = list.map(p=>{
@@ -1370,6 +1376,8 @@
       </tr>`;
     }).join('');
   }
+  const lowstockSearchInput = document.getElementById('lowstock-search');
+  if(lowstockSearchInput) lowstockSearchInput.addEventListener('input', renderLowStock);
 
   function toggleRestock(id, flagged){
     const p = products.find(p=>p.id === id);
