@@ -296,6 +296,9 @@
   .view{display:none;}
   .view.active{display:block;}
 
+  .sell-layout{display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap;}
+  .sell-layout > .panel{flex:1 1 420px; min-width:320px;}
+
   .panel{
     background:var(--paper); border:3px solid var(--ink); border-radius:18px;
     padding:20px; margin-bottom:20px; box-shadow:var(--shadow);
@@ -637,6 +640,7 @@
 
   <!-- SELL VIEW -->
   <section class="view active" id="view-sell">
+    <div class="sell-layout">
     <div class="panel">
       <h2>Magbenta ng Produkto</h2>
       <div class="sell-picker">
@@ -687,6 +691,7 @@
       <div class="row-actions">
         <button class="btn" id="checkout-btn">Ibenta Lahat</button>
       </div>
+    </div>
     </div>
   </section>
 
