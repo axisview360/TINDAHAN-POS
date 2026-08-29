@@ -840,7 +840,8 @@
           <tr>
             <th>Produkto</th>
             <th class="num">Kasalukuyang Qty</th>
-            <th class="num">Cost/pc</th>
+            <th class="num">Wholesale</th>
+            <th class="no-print">I-edit</th>
             <th class="no-print">Nabili?</th>
           </tr>
         </thead>
@@ -1395,26 +1396,74 @@
   }
 
   // ---------- restock list (shopping list) ----------
+  let restockEditingId = null;
+
   function renderRestockList(){
     const tbody = document.getElementById('restocklist-tbody');
     if(!tbody) return;
     const list = products.filter(p=>p.restockFlagged)
                           .sort((a,b)=>a.qty - b.qty || a.name.localeCompare(b.name));
     if(list.length === 0){
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="4">Wala pang produkto sa restock list. Mag-check sa Imbentaryo o Mababang Stock.</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Wala pang produkto sa restock list. Mag-check sa Imbentaryo o Mababang Stock.</td></tr>';
       return;
     }
     tbody.innerHTML = list.map(p=>{
+      if(p.id === restockEditingId){
+        return `<tr class="${p.qty <= LOW_STOCK_THRESHOLD ? 'low-stock' : ''}">
+          <td class="pname">${escapeHtml(p.name)}</td>
+          <td class="num"><input type="number" id="restock-edit-qty" min="0" step="1" value="${p.qty}" style="width:80px; padding:6px; border:2px solid var(--ink); border-radius:8px; font-family:'Space Mono',monospace;"></td>
+          <td class="num"><input type="number" id="restock-edit-wholesale" min="0" step="0.01" value="${p.wholesale}" style="width:90px; padding:6px; border:2px solid var(--ink); border-radius:8px; font-family:'Space Mono',monospace;"></td>
+          <td class="no-print" colspan="2" style="text-align:center;">
+            <button class="btn small" onclick="TindahanPOS.saveRestockEdit('${p.id}')">Save</button>
+            <button class="btn small outline" onclick="TindahanPOS.cancelRestockEdit()">Cancel</button>
+          </td>
+        </tr>`;
+      }
       const cost = costPerPiece(p);
       return `<tr class="${p.qty <= LOW_STOCK_THRESHOLD ? 'low-stock' : ''}">
         <td class="pname">${escapeHtml(p.name)}</td>
         <td class="num">${p.qty}</td>
-        <td class="num">${PESO(cost)}</td>
+        <td class="num">${PESO(p.wholesale)}${(p.pcsPerPack && p.pcsPerPack > 1) ? `<div style="font-size:10px; color:var(--muted);">(${PESO(cost)}/pc × ${p.pcsPerPack})</div>` : ''}</td>
+        <td class="no-print" style="text-align:center;">
+          <button class="btn small outline" onclick="TindahanPOS.startRestockEdit('${p.id}')">Edit</button>
+        </td>
         <td class="no-print" style="text-align:center;">
           <input type="checkbox" onchange="TindahanPOS.toggleRestock('${p.id}', false)">
         </td>
       </tr>`;
     }).join('');
+  }
+
+  function startRestockEdit(id){
+    restockEditingId = id;
+    renderRestockList();
+  }
+
+  function cancelRestockEdit(){
+    restockEditingId = null;
+    renderRestockList();
+  }
+
+  function saveRestockEdit(id){
+    const p = products.find(p=>p.id === id);
+    if(!p) return;
+    const newQty = parseInt(document.getElementById('restock-edit-qty').value, 10);
+    const newWholesale = parseFloat(document.getElementById('restock-edit-wholesale').value);
+    if(isNaN(newQty) || newQty < 0 || isNaN(newWholesale) || newWholesale < 0){
+      toast('Ilagay ang tamang qty at wholesale price.');
+      return;
+    }
+    p.qty = newQty;
+    p.wholesale = newWholesale;
+    p.restockFlagged = false; // assume they've now restocked it, so drop it off the list
+    saveProducts();
+    restockEditingId = null;
+    renderProducts();
+    toast('Na-update ang imbentaryo ni ' + p.name + '.');
+
+    if(fbReady){
+      fbDb.collection('products').doc(id).update({qty: newQty, wholesale: newWholesale, restockFlagged: false}).catch(err=>toast('Sync error: '+err.message));
+    }
   }
 
   function escapeHtml(s){
@@ -2314,7 +2363,7 @@
   });
 
   // expose for inline handlers
-  window.TindahanPOS = { editProduct, deleteProduct, startPriceEdit, cancelPriceEdit, savePriceEdit, selectSellProduct, toggleRestock, removeCartItem, quickAddToCart, addQuickShortcut, removeQuickShortcut, addToCartFromPriceCheck };
+  window.TindahanPOS = { editProduct, deleteProduct, startPriceEdit, cancelPriceEdit, savePriceEdit, selectSellProduct, toggleRestock, removeCartItem, quickAddToCart, addQuickShortcut, removeQuickShortcut, addToCartFromPriceCheck, startRestockEdit, cancelRestockEdit, saveRestockEdit };
 
   // ---------- init ----------
   renderProducts();
