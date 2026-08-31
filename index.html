@@ -191,19 +191,23 @@
 
   /* ---- quick-add tiles (Magbenta) ---- */
   .quick-add-grid{
-    display:flex; flex-wrap:wrap; gap:12px; max-height:340px; overflow-y:auto; padding:4px 2px;
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));
+    gap:12px; max-height:340px; overflow-y:auto; padding:4px 2px;
   }
   .quick-add-tile{
     background:var(--paper); border:3px solid var(--ink); border-radius:14px 14px 14px 4px;
-    padding:9px 12px; min-width:130px; cursor:pointer; position:relative;
+    padding:10px 12px; min-height:98px; cursor:pointer; position:relative;
     box-shadow:3px 3px 0 var(--ink); transition:transform 0.08s;
-    text-align:left;
+    text-align:left; display:flex; flex-direction:column; justify-content:space-between;
   }
   .quick-add-tile:hover{transform:translate(2px,2px); box-shadow:1px 1px 0 var(--ink);}
   .quick-add-tile:active{transform:translate(3px,3px); box-shadow:0 0 0 var(--ink);}
-  .quick-add-tile .qname{font-weight:700; font-size:13px; margin-bottom:2px; padding-right:16px;}
+  .quick-add-tile .qname{
+    font-weight:700; font-size:13px; margin-bottom:2px; padding-right:16px;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  }
   .quick-add-tile .qprice{font-family:'Space Mono',monospace; font-weight:700; color:var(--red); font-size:16px;}
-  .quick-add-tile .qstock{font-size:10.5px; color:var(--muted);}
+  .quick-add-tile .qstock{font-size:10.5px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .quick-add-tile.low{border-color:var(--danger);}
   .quick-add-tile.out{opacity:0.55; cursor:not-allowed;}
   .quick-add-tile .qremove-btn{
@@ -211,7 +215,7 @@
     background:var(--red); color:#fff; border:2px solid var(--ink); font-size:13px; line-height:1;
     display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:700;
   }
-  .quick-add-empty{color:var(--muted-light); font-style:italic; font-size:13px; padding:10px;}
+  .quick-add-empty{color:var(--muted-light); font-style:italic; font-size:13px; padding:10px; grid-column:1/-1;}
 
   .quick-picker{
     border:3px dashed var(--ink); border-radius:14px; padding:14px; margin-top:12px; background:var(--panel-tint);
