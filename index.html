@@ -116,6 +116,15 @@
   }
   .menu-toggle:hover{transform:translate(1px,1px); box-shadow:2px 2px 0 var(--ink);}
 
+  .dashboard-toggle{
+    position:relative; z-index:2;
+    font-family:'Bangers',cursive; font-size:14px; letter-spacing:0.02em; text-transform:uppercase;
+    background:var(--purple); color:#fff; border:3px solid var(--ink); border-radius:10px;
+    padding:8px 14px; cursor:pointer; box-shadow:3px 3px 0 var(--ink);
+    margin-right:12px; vertical-align:middle;
+  }
+  .dashboard-toggle:hover{transform:translate(1px,1px); box-shadow:2px 2px 0 var(--ink);}
+
   .menu-backdrop{
     display:none; position:fixed; inset:0; background:rgba(0,0,0,0.35); z-index:29;
   }
@@ -365,6 +374,16 @@
   .totals-strip .stat .label{font-size:10px; text-transform:uppercase; opacity:0.85;}
   .totals-strip .stat .val{font-family:'Space Mono',monospace; font-size:18px; font-weight:700;}
 
+  .dashboard-grid{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:14px; margin-top:10px;
+  }
+  .dashboard-grid .dstat{
+    color:#fff; padding:14px 16px; border-radius:14px; border:3px solid var(--ink);
+    box-shadow:4px 4px 0 rgba(0,0,0,0.25);
+  }
+  .dashboard-grid .dstat .label{font-size:11px; text-transform:uppercase; opacity:0.9; font-family:'Bangers',cursive; letter-spacing:0.02em;}
+  .dashboard-grid .dstat .val{font-family:'Space Mono',monospace; font-size:22px; font-weight:700; margin-top:2px;}
+
   .sukli-box{
     display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-top:14px;
     background:var(--panel-tint); border:2px dashed var(--ink); border-radius:12px; padding:12px 16px;
@@ -477,6 +496,7 @@
 
 <header class="top">
   <button class="menu-toggle" id="menu-toggle-btn" aria-label="Menu">☰</button>
+  <button class="dashboard-toggle" id="dashboard-toggle-btn" type="button">📊 Dashboard</button>
   <div class="brand">
     <h1>Tindahan POS</h1>
     <span class="tagline">// sari-sari store inventory &amp; sales</span>
@@ -517,6 +537,26 @@
 </nav>
 
 <main>
+
+  <!-- DASHBOARD VIEW -->
+  <section class="view" id="view-dashboard">
+    <div class="panel">
+      <h2>Dashboard</h2>
+      <p class="sync-help">Buod ng lahat — sales ngayong araw, cash on hand, at mga kailangang pansinin.</p>
+      <div class="dashboard-grid" id="dashboard-grid"></div>
+    </div>
+    <div class="panel">
+      <h2>Mabilis na Pupuntahan</h2>
+      <div class="row-actions" style="flex-wrap:wrap;">
+        <button class="btn" data-jump="sell">Magbenta</button>
+        <button class="btn outline" data-jump="ewallet">Cash In/Out</button>
+        <button class="btn outline" data-jump="lowstock">Mababang Stock</button>
+        <button class="btn outline" data-jump="restocklist">Restock List</button>
+        <button class="btn outline" data-jump="closing">Daily Closing</button>
+        <button class="btn outline" data-jump="report">Ulat</button>
+      </div>
+    </div>
+  </section>
 
   <!-- PRODUCTS VIEW -->
   <section class="view" id="view-products">
@@ -1047,6 +1087,7 @@
       renderToday();
       if(typeof renderSalesTrend === 'function') renderSalesTrend();
       if(typeof renderDailyClosing === 'function') renderDailyClosing();
+      if(typeof renderDashboard === 'function') renderDashboard();
       document.getElementById('fb-last-sync').textContent = 'Huling sync: ' + new Date().toLocaleTimeString('en-PH');
     }, ()=> setSyncStatus('err','Sync error (sales)'));
     unsubEwalletBal = fbDb.collection('meta').doc('ewalletBalances').onSnapshot(doc=>{
@@ -1061,6 +1102,7 @@
       saveEwalletTx();
       if(typeof renderEwalletTxTable === 'function') renderEwalletTxTable();
       if(typeof renderDailyClosing === 'function') renderDailyClosing();
+      if(typeof renderDashboard === 'function') renderDashboard();
     }, ()=> setSyncStatus('err','Sync error (ewallet tx)'));
     unsubClosings = fbDb.collection('dailyClosings').onSnapshot(snap=>{
       dailyClosings = snap.docs.map(d=>({id:d.id, ...d.data()}));
@@ -1148,6 +1190,7 @@
     navMenu.classList.contains('open') ? closeMenu() : openMenu();
   });
   menuBackdrop.addEventListener('click', closeMenu);
+  document.getElementById('dashboard-toggle-btn').addEventListener('click', ()=> activateView('dashboard'));
 
   // ---------- theme picker ----------
   const LS_THEME = 'tindahanPOS_theme';
@@ -1170,6 +1213,7 @@
     const btn = document.querySelector('nav.tabs button[data-view="'+viewName+'"]');
     if(btn) btn.classList.add('active');
     document.getElementById('view-'+viewName).classList.add('active');
+    if(viewName === 'dashboard') renderDashboard();
     if(viewName === 'sell') renderSellSelect();
     if(viewName === 'today') renderToday();
     if(viewName === 'lowstock') renderLowStock();
@@ -1181,6 +1225,9 @@
   }
   document.querySelectorAll('nav.tabs button').forEach(btn=>{
     btn.addEventListener('click', ()=> activateView(btn.dataset.view));
+  });
+  document.querySelectorAll('[data-jump]').forEach(btn=>{
+    btn.addEventListener('click', ()=> activateView(btn.dataset.jump));
   });
 
   // ---------- product form ----------
@@ -1357,6 +1404,7 @@
     localStorage.setItem(LS_THRESHOLD, String(LOW_STOCK_THRESHOLD));
     renderProducts();
     renderLowStock();
+    if(typeof renderDashboard === 'function') renderDashboard();
   });
 
   function renderLowStock(){
@@ -1396,6 +1444,7 @@
     p.restockFlagged = flagged;
     saveProducts();
     renderRestockList();
+    if(typeof renderDashboard === 'function') renderDashboard();
     if(fbReady) fbDb.collection('products').doc(id).update({restockFlagged: flagged}).catch(err=>toast('Sync error: '+err.message));
   }
 
@@ -1891,6 +1940,7 @@
     renderCart();
     if(typeof renderSalesTrend === 'function') renderSalesTrend();
     if(typeof renderDailyClosing === 'function') renderDailyClosing();
+      if(typeof renderDashboard === 'function') renderDashboard();
     if(typeof renderEwalletBalances === 'function') renderEwalletBalances();
 
     if(fbReady){
@@ -1999,6 +2049,30 @@
     renderEwalletTxTable();
   }
 
+  // ---------- dashboard ----------
+  function renderDashboard(){
+    const grid = document.getElementById('dashboard-grid');
+    if(!grid) return;
+    const today = todayStr();
+    const todaySales = sales.filter(s=>todayStr(s.timestamp) === today);
+    const todayRevenue = todaySales.reduce((a,s)=>a+s.revenue, 0);
+    const todayProfit = todaySales.reduce((a,s)=>a+s.profit, 0);
+    const todayItems = todaySales.reduce((a,s)=>a+s.qty, 0);
+    const lowStockCount = products.filter(p=>p.qty <= LOW_STOCK_THRESHOLD).length;
+    const restockCount = products.filter(p=>p.restockFlagged).length;
+
+    grid.innerHTML = `
+      <div class="dstat" style="background:var(--blue);"><div class="label">Today's Sales</div><div class="val">${PESO(todayRevenue)}</div></div>
+      <div class="dstat" style="background:var(--green);"><div class="label">Today's Profit</div><div class="val">${PESO(todayProfit)}</div></div>
+      <div class="dstat" style="background:var(--purple);"><div class="label">Items Sold Today</div><div class="val">${todayItems}</div></div>
+      <div class="dstat" style="background:var(--mustard); color:var(--ink);"><div class="label">Cash on Hand</div><div class="val">${PESO(ewalletBalances.cash||0)}</div></div>
+      <div class="dstat" style="background:var(--blue);"><div class="label">GCash Balance</div><div class="val">${PESO(ewalletBalances.gcash||0)}</div></div>
+      <div class="dstat" style="background:var(--green);"><div class="label">Maribank Balance</div><div class="val">${PESO(ewalletBalances.maribank||0)}</div></div>
+      <div class="dstat" style="background:var(--red);"><div class="label">Low Stock Items</div><div class="val">${lowStockCount}</div></div>
+      <div class="dstat" style="background:var(--red-dark);"><div class="label">Restock List</div><div class="val">${restockCount}</div></div>
+    `;
+  }
+
   function renderEwalletBalances(){
     const el = document.getElementById('ewallet-balances');
     if(!el) return;
@@ -2083,6 +2157,7 @@
     saveEwalletTx();
     renderEwallet();
     if(typeof renderDailyClosing === 'function') renderDailyClosing();
+      if(typeof renderDashboard === 'function') renderDashboard();
     toast('Na-record ang transaksyon.');
 
     document.getElementById('ewallet-amount').value = '';
@@ -2375,6 +2450,7 @@
   renderToday();
   renderEwallet();
   renderDailyClosing();
+  renderDashboard();
 
   const savedFbConfig = localStorage.getItem(LS_FB_CONFIG);
   if(savedFbConfig){
