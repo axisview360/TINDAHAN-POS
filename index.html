@@ -1027,6 +1027,40 @@
   const PESO = n => '₱' + Number(n).toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2});
   let LOW_STOCK_THRESHOLD = parseInt(localStorage.getItem(LS_THRESHOLD), 10) || 5;
 
+  // ---------- typo-tolerant search ----------
+  function levenshtein(a, b){
+    const m = a.length, n = b.length;
+    if(m === 0) return n;
+    if(n === 0) return m;
+    let prev = new Array(n+1);
+    let curr = new Array(n+1);
+    for(let j=0; j<=n; j++) prev[j] = j;
+    for(let i=1; i<=m; i++){
+      curr[0] = i;
+      for(let j=1; j<=n; j++){
+        const cost = a[i-1] === b[j-1] ? 0 : 1;
+        curr[j] = Math.min(curr[j-1]+1, prev[j]+1, prev[j-1]+cost);
+      }
+      [prev, curr] = [curr, prev];
+    }
+    return prev[n];
+  }
+
+  function fuzzyMatch(name, query){
+    if(!query) return true;
+    name = name.toLowerCase();
+    query = query.toLowerCase().trim();
+    if(!query) return true;
+    if(name.includes(query)) return true;
+    const threshold = query.length <= 3 ? 1 : (query.length <= 6 ? 2 : 3);
+    const words = name.split(/\s+/);
+    for(const w of words){
+      if(levenshtein(w, query) <= threshold) return true;
+    }
+    if(levenshtein(name, query) <= threshold + 1) return true;
+    return false;
+  }
+
   let products = JSON.parse(localStorage.getItem(LS_PRODUCTS) || '[]');
   let sales = JSON.parse(localStorage.getItem(LS_SALES) || '[]');
   let ewalletBalances = JSON.parse(localStorage.getItem(LS_EWALLET_BAL) || '{"gcash":0,"maribank":0,"cash":0}');
@@ -1353,7 +1387,7 @@
   function renderProducts(){
     const q = document.getElementById('product-search').value.trim().toLowerCase();
     const tbody = document.getElementById('products-tbody');
-    let list = products.filter(p=>p.name.toLowerCase().includes(q));
+    let list = products.filter(p=>fuzzyMatch(p.name, q));
     if(selectedLetter !== 'all'){
       if(selectedLetter === '#'){
         list = list.filter(p=>!/^[a-zA-Z]/.test(p.name));
@@ -1412,7 +1446,7 @@
     if(!tbody) return;
     const searchInput = document.getElementById('lowstock-search');
     const q = searchInput ? searchInput.value.trim().toLowerCase() : '';
-    const list = products.filter(p=>p.qty <= LOW_STOCK_THRESHOLD && p.name.toLowerCase().includes(q))
+    const list = products.filter(p=>p.qty <= LOW_STOCK_THRESHOLD && fuzzyMatch(p.name, q))
                           .sort((a,b)=>a.qty - b.qty);
     if(list.length === 0){
       const msg = q ? `Walang mababang stock na tumutugma sa "${q}".` : 'Walang mababang stock — okay lahat!';
@@ -1531,7 +1565,7 @@
   function renderPriceCheck(){
     const q = pcInput.value.trim().toLowerCase();
     if(!q){ pcResults.innerHTML=''; return; }
-    const matches = products.filter(p=>p.name.toLowerCase().includes(q)).slice(0,6);
+    const matches = products.filter(p=>fuzzyMatch(p.name, q)).slice(0,6);
     if(matches.length === 0){
       pcResults.innerHTML = '<div class="price-card">Walang nahanap na produkto.</div>';
       return;
@@ -1682,7 +1716,7 @@
   function renderQuickPickerList(){
     const listEl = document.getElementById('quick-picker-list');
     const q = quickPickerSearch.value.trim().toLowerCase();
-    const candidates = products.filter(p=>!p.quickSell && p.name.toLowerCase().includes(q))
+    const candidates = products.filter(p=>!p.quickSell && fuzzyMatch(p.name, q))
                                 .sort((a,b)=>a.name.localeCompare(b.name));
     if(candidates.length === 0){
       listEl.innerHTML = '<div class="quick-add-empty">Wala nang produktong maidadagdag.</div>';
@@ -1738,7 +1772,7 @@
     const q = sellSearchInput.value.trim().toLowerCase();
     renderQuickAddGrid();
     if(!q){ sellSuggestions.classList.remove('show'); sellSuggestions.innerHTML=''; return; }
-    const matches = products.filter(p=>availableStock(p) > 0 && p.name.toLowerCase().includes(q))
+    const matches = products.filter(p=>availableStock(p) > 0 && fuzzyMatch(p.name, q))
                              .sort((a,b)=>a.name.localeCompare(b.name)).slice(0,8);
     if(matches.length === 0){
       sellSuggestions.innerHTML = '<div class="sell-suggestion-empty">Walang stock na tugma.</div>';
