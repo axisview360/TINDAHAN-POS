@@ -241,6 +241,21 @@
     padding:5px 10px; cursor:pointer; white-space:nowrap;
   }
 
+  /* ---- utang inline forms & history ---- */
+  .utang-actions{display:flex; gap:5px; flex-wrap:wrap;}
+  .utang-inline{
+    background:var(--panel-tint); border:2px dashed var(--ink); border-radius:10px;
+    padding:12px; margin-top:2px;
+  }
+  .utang-inline .field{margin-bottom:8px;}
+  .utang-history-item{
+    display:flex; justify-content:space-between; gap:10px; padding:6px 0;
+    border-bottom:1px dashed var(--border); font-size:12.5px;
+  }
+  .utang-history-item:last-child{border-bottom:none;}
+  .utang-balance.owed{color:var(--danger); font-weight:700;}
+  .utang-balance.clear{color:var(--green); font-weight:700;}
+
   /* ---- starburst low-stock badge ---- */
   .stock-badge{
     display:inline-block; margin-left:6px; padding:2px 9px;
@@ -526,6 +541,7 @@
   </div>
   <button data-view="sell" class="active">Magbenta</button>
   <button data-view="ewallet">Cash In/Out</button>
+  <button data-view="utang">Utang</button>
   <button data-view="products">Imbentaryo</button>
   <button data-view="today">Benta Ngayon</button>
   <button data-view="closing">Daily Closing</button>
@@ -586,10 +602,15 @@
             <label>Quantity (pcs)</label>
             <input type="number" id="f-qty" step="1" min="0" required>
           </div>
+          <div class="field">
+            <label>Additional Stock (+pcs)</label>
+            <input type="number" id="f-add-stock" step="1" min="0" value="0">
+          </div>
           <div class="profit-preview">
             Leave "Pcs per Pack" as 1 for loose/tingi items. For a packed item (e.g. 1 pack of biscuits = 10 pcs), put the pack's wholesale price above and 10 here — cost per piece is computed automatically.<br>
             Cost per pc: <strong id="f-cost-preview">₱0.00</strong> &nbsp;|&nbsp; Profit per unit: <strong id="f-profit-preview">₱0.00</strong><br>
-            <span style="color:var(--muted);">Suggested price (20–30% markup):</span> <strong id="f-suggested-price" style="color:var(--blue);">₱0.00 – ₱0.00</strong>
+            <span style="color:var(--muted);">Suggested price (20–30% markup):</span> <strong id="f-suggested-price" style="color:var(--blue);">₱0.00 – ₱0.00</strong><br>
+            <span style="color:var(--muted);">Kapag may restock (Additional Stock), bagong total na quantity:</span> <strong id="f-new-total-preview" style="color:var(--green);">0 pcs</strong>
           </div>
         </div>
         <div class="row-actions">
@@ -713,12 +734,26 @@
       </table>
       </div>
       <div class="totals-strip" id="cart-totals"></div>
-      <div class="sukli-box">
+      <div class="field" style="max-width:220px; margin-top:14px;">
+        <label>Paraan ng Bayad</label>
+        <select id="payment-method-select">
+          <option value="cash">Cash</option>
+          <option value="utang">Utang (Credit)</option>
+        </select>
+      </div>
+      <div class="sukli-box" id="cash-payment-box">
         <div class="field" style="max-width:200px; margin-bottom:0;">
           <label>Bayad ng Customer (₱)</label>
           <input type="number" id="amount-received" step="0.01" min="0" placeholder="0.00">
         </div>
         <div class="sukli-result" id="sukli-result">Sukli: ₱0.00</div>
+      </div>
+      <div class="sukli-box" id="utang-payment-box" style="display:none;">
+        <div class="field" style="max-width:260px; margin-bottom:0;">
+          <label>I-charge kay (Customer)</label>
+          <select id="checkout-utang-customer"></select>
+        </div>
+        <div class="sukli-result" id="utang-charge-preview">Ida-charge: ₱0.00</div>
       </div>
       <div class="row-actions">
         <button class="btn" id="checkout-btn">Ibenta Lahat</button>
@@ -1055,6 +1090,59 @@
     </div>
   </section>
 
+  <!-- UTANG (CREDIT) VIEW -->
+  <section class="view" id="view-utang">
+    <div class="panel">
+      <h2>Utang ng mga Customer</h2>
+      <div class="totals-strip" id="utang-total-stat"></div>
+    </div>
+
+    <div class="panel">
+      <h2 id="utang-form-title">Magdagdag ng Customer</h2>
+      <form id="utang-customer-form">
+        <input type="hidden" id="utang-customer-id">
+        <div class="form-grid">
+          <div class="field">
+            <label>Pangalan</label>
+            <input type="text" id="utang-cust-name" required autocomplete="off">
+          </div>
+          <div class="field">
+            <label>Phone Number</label>
+            <input type="text" id="utang-cust-phone" autocomplete="off">
+          </div>
+          <div class="field">
+            <label>Notes</label>
+            <input type="text" id="utang-cust-notes" autocomplete="off">
+          </div>
+        </div>
+        <div class="row-actions">
+          <button type="submit" class="btn" id="utang-customer-submit-btn">Save Customer</button>
+          <button type="button" class="btn outline" id="utang-customer-cancel-btn" style="display:none;">Cancel Edit</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h2>Listahan ng mga Customer</h2>
+      <div class="search-bar" style="margin-top:10px;">
+        <input type="text" id="utang-search" placeholder="Search customer...">
+      </div>
+      <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Pangalan</th>
+            <th>Phone</th>
+            <th class="num">Utang (Owed)</th>
+            <th class="no-print">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="utang-customers-tbody"></tbody>
+      </table>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <div class="toast" id="toast"></div>
@@ -1084,6 +1172,8 @@
   const LS_EWALLET_TX = 'tindahanPOS_ewalletTx';
   const LS_CLOSINGS = 'tindahanPOS_dailyClosings';
   const LS_SUPPLIERS = 'tindahanPOS_suppliers';
+  const LS_UTANG_CUSTOMERS = 'tindahanPOS_utangCustomers';
+  const LS_UTANG_TX = 'tindahanPOS_utangTx';
   const PESO = n => '₱' + Number(n).toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2});
   let LOW_STOCK_THRESHOLD = parseInt(localStorage.getItem(LS_THRESHOLD), 10) || 5;
 
@@ -1128,7 +1218,9 @@
   let ewalletTx = JSON.parse(localStorage.getItem(LS_EWALLET_TX) || '[]');
   let dailyClosings = JSON.parse(localStorage.getItem(LS_CLOSINGS) || '[]');
   let suppliers = JSON.parse(localStorage.getItem(LS_SUPPLIERS) || '[]');
-  let fbDb = null, fbReady = false, unsubProducts = null, unsubSales = null, unsubEwalletBal = null, unsubEwalletTx = null, unsubClosings = null, unsubSuppliers = null;
+  let utangCustomers = JSON.parse(localStorage.getItem(LS_UTANG_CUSTOMERS) || '[]');
+  let utangTx = JSON.parse(localStorage.getItem(LS_UTANG_TX) || '[]');
+  let fbDb = null, fbReady = false, unsubProducts = null, unsubSales = null, unsubEwalletBal = null, unsubEwalletTx = null, unsubClosings = null, unsubSuppliers = null, unsubUtangCustomers = null, unsubUtangTx = null;
 
   function saveProducts(){ localStorage.setItem(LS_PRODUCTS, JSON.stringify(products)); }
   function saveSales(){ localStorage.setItem(LS_SALES, JSON.stringify(sales)); }
@@ -1136,6 +1228,8 @@
   function saveEwalletTx(){ localStorage.setItem(LS_EWALLET_TX, JSON.stringify(ewalletTx)); }
   function saveClosings(){ localStorage.setItem(LS_CLOSINGS, JSON.stringify(dailyClosings)); }
   function saveSuppliers(){ localStorage.setItem(LS_SUPPLIERS, JSON.stringify(suppliers)); }
+  function saveUtangCustomers(){ localStorage.setItem(LS_UTANG_CUSTOMERS, JSON.stringify(utangCustomers)); }
+  function saveUtangTx(){ localStorage.setItem(LS_UTANG_TX, JSON.stringify(utangTx)); }
 
   function toast(msg){
     const t = document.getElementById('toast');
@@ -1172,6 +1266,8 @@
     if(unsubEwalletTx) unsubEwalletTx();
     if(unsubClosings) unsubClosings();
     if(unsubSuppliers) unsubSuppliers();
+    if(unsubUtangCustomers) unsubUtangCustomers();
+    if(unsubUtangTx) unsubUtangTx();
     unsubProducts = fbDb.collection('products').onSnapshot(snap=>{
       products = snap.docs.map(d=>({id:d.id, ...d.data()}));
       saveProducts();
@@ -1211,6 +1307,16 @@
       saveSuppliers();
       if(typeof renderSuppliers === 'function') renderSuppliers();
     }, ()=> setSyncStatus('err','Sync error (suppliers)'));
+    unsubUtangCustomers = fbDb.collection('utangCustomers').onSnapshot(snap=>{
+      utangCustomers = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      saveUtangCustomers();
+      if(typeof renderUtang === 'function') renderUtang();
+    }, ()=> setSyncStatus('err','Sync error (utang)'));
+    unsubUtangTx = fbDb.collection('utangTx').onSnapshot(snap=>{
+      utangTx = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      saveUtangTx();
+      if(typeof renderUtang === 'function') renderUtang();
+    }, ()=> setSyncStatus('err','Sync error (utang tx)'));
   }
 
   function connectFirebase(config, silent){
@@ -1323,6 +1429,7 @@
     if(viewName === 'suppliers') renderSuppliers();
     if(viewName === 'trend') renderSalesTrend();
     if(viewName === 'ewallet') renderEwallet();
+    if(viewName === 'utang') renderUtang();
     if(viewName === 'closing') renderDailyClosing();
     closeMenu();
   }
@@ -1340,9 +1447,11 @@
   const fPcsPerPack = document.getElementById('f-pcsperpack');
   const fSelling = document.getElementById('f-selling');
   const fQty = document.getElementById('f-qty');
+  const fAddStock = document.getElementById('f-add-stock');
   const fCostPreview = document.getElementById('f-cost-preview');
   const fProfitPreview = document.getElementById('f-profit-preview');
   const fSuggestedPrice = document.getElementById('f-suggested-price');
+  const fNewTotalPreview = document.getElementById('f-new-total-preview');
   const productIdField = document.getElementById('product-id');
   const cancelBtn = document.getElementById('product-cancel-btn');
   const submitBtn = document.getElementById('product-submit-btn');
@@ -1367,27 +1476,38 @@
     fProfitPreview.style.color = profit < 0 ? 'var(--danger)' : '';
     const range = suggestedPriceRange(cost);
     fSuggestedPrice.textContent = PESO(range.low) + ' – ' + PESO(range.high);
+    updateNewTotalPreview();
   }
   fWholesale.addEventListener('input', updateProfitPreview);
   fPcsPerPack.addEventListener('input', updateProfitPreview);
   fSelling.addEventListener('input', updateProfitPreview);
 
+  function updateNewTotalPreview(){
+    const currentQty = parseInt(fQty.value, 10) || 0;
+    const addStock = parseInt(fAddStock.value, 10) || 0;
+    fNewTotalPreview.textContent = (currentQty + addStock) + ' pcs';
+  }
+  fQty.addEventListener('input', updateNewTotalPreview);
+  fAddStock.addEventListener('input', updateNewTotalPreview);
+
   form.addEventListener('submit', e=>{
     e.preventDefault();
     const id = productIdField.value;
+    const baseQty = parseInt(fQty.value, 10) || 0;
+    const addStock = parseInt(fAddStock.value, 10) || 0;
     const data = {
       name: fName.value.trim(),
       wholesale: parseFloat(fWholesale.value),
       pcsPerPack: parseInt(fPcsPerPack.value, 10) || 1,
       selling: parseFloat(fSelling.value),
-      qty: parseInt(fQty.value, 10)
+      qty: baseQty + addStock
     };
     if(!data.name){ toast('Kailangan ng pangalan ng produkto.'); return; }
 
     if(id){
       const p = products.find(p=>p.id === id);
       Object.assign(p, data);
-      toast('Na-update: ' + data.name);
+      toast(addStock > 0 ? `Na-update: ${data.name} (+${addStock} pcs)` : 'Na-update: ' + data.name);
       if(fbReady) fbDb.collection('products').doc(id).set(data, {merge:true}).catch(err=>toast('Sync error: '+err.message));
     } else {
       const newId = 'p_'+Date.now();
@@ -1411,6 +1531,7 @@
     fCostPreview.textContent = '₱0.00';
     fProfitPreview.textContent = '₱0.00';
     fProfitPreview.style.color = '';
+    fNewTotalPreview.textContent = '0 pcs';
   }
 
   function editProduct(id){
@@ -1422,6 +1543,7 @@
     fPcsPerPack.value = p.pcsPerPack || 1;
     fSelling.value = p.selling;
     fQty.value = p.qty;
+    fAddStock.value = 0;
     updateProfitPreview();
     formTitle.textContent = 'I-edit: ' + p.name;
     submitBtn.textContent = 'Update Product';
@@ -1720,6 +1842,221 @@
   }
   const supplierSearchInput = document.getElementById('supplier-search');
   if(supplierSearchInput) supplierSearchInput.addEventListener('input', renderSuppliers);
+
+  // ---------- utang (customer credit) ----------
+  const utangForm = document.getElementById('utang-customer-form');
+  const utangCustIdField = document.getElementById('utang-customer-id');
+  const utangCancelBtn = document.getElementById('utang-customer-cancel-btn');
+  const utangSubmitBtn = document.getElementById('utang-customer-submit-btn');
+  const utangFormTitle = document.getElementById('utang-form-title');
+  let utangOpenActionId = null; // customer id whose charge/payment form is open
+  let utangOpenActionType = null; // 'charge' | 'payment'
+  let utangOpenHistoryId = null; // customer id whose history is expanded
+
+  function utangBalance(customerId){
+    return utangTx.filter(t=>t.customerId === customerId).reduce((sum,t)=>{
+      return sum + (t.type === 'charge' ? t.amount : -t.amount);
+    }, 0);
+  }
+
+  utangForm.addEventListener('submit', e=>{
+    e.preventDefault();
+    const id = utangCustIdField.value;
+    const data = {
+      name: document.getElementById('utang-cust-name').value.trim(),
+      phone: document.getElementById('utang-cust-phone').value.trim(),
+      notes: document.getElementById('utang-cust-notes').value.trim()
+    };
+    if(!data.name){ toast('Kailangan ng pangalan ng customer.'); return; }
+
+    if(id){
+      const c = utangCustomers.find(c=>c.id === id);
+      Object.assign(c, data);
+      toast('Na-update: ' + data.name);
+      if(fbReady) fbDb.collection('utangCustomers').doc(id).set(data, {merge:true}).catch(err=>toast('Sync error: '+err.message));
+    } else {
+      const newId = 'cust_'+Date.now();
+      utangCustomers.push({ id: newId, ...data });
+      toast('Naidagdag: ' + data.name);
+      if(fbReady) fbDb.collection('utangCustomers').doc(newId).set(data).catch(err=>toast('Sync error: '+err.message));
+    }
+    saveUtangCustomers();
+    resetUtangForm();
+    renderUtang();
+  });
+
+  utangCancelBtn.addEventListener('click', resetUtangForm);
+
+  function resetUtangForm(){
+    utangForm.reset();
+    utangCustIdField.value = '';
+    utangFormTitle.textContent = 'Magdagdag ng Customer';
+    utangSubmitBtn.textContent = 'Save Customer';
+    utangCancelBtn.style.display = 'none';
+  }
+
+  function editUtangCustomer(id){
+    const c = utangCustomers.find(c=>c.id === id);
+    if(!c) return;
+    utangCustIdField.value = c.id;
+    document.getElementById('utang-cust-name').value = c.name || '';
+    document.getElementById('utang-cust-phone').value = c.phone || '';
+    document.getElementById('utang-cust-notes').value = c.notes || '';
+    utangFormTitle.textContent = 'I-edit: ' + c.name;
+    utangSubmitBtn.textContent = 'Update Customer';
+    utangCancelBtn.style.display = 'inline-block';
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  function deleteUtangCustomer(id){
+    const c = utangCustomers.find(c=>c.id === id);
+    if(!c) return;
+    const bal = utangBalance(id);
+    const warn = bal > 0 ? ` May utang pa siyang ${PESO(bal)}.` : '';
+    if(!confirm('Sigurado ka bang burahin ang "'+c.name+'"?' + warn)) return;
+    utangCustomers = utangCustomers.filter(c=>c.id !== id);
+    saveUtangCustomers();
+    renderUtang();
+    toast('Binura: ' + c.name);
+    if(fbReady) fbDb.collection('utangCustomers').doc(id).delete().catch(err=>toast('Sync error: '+err.message));
+  }
+
+  function toggleUtangAction(id, type){
+    if(utangOpenActionId === id && utangOpenActionType === type){
+      utangOpenActionId = null; utangOpenActionType = null;
+    } else {
+      utangOpenActionId = id; utangOpenActionType = type;
+      utangOpenHistoryId = null;
+    }
+    renderUtang();
+  }
+
+  function cancelUtangAction(){
+    utangOpenActionId = null; utangOpenActionType = null;
+    renderUtang();
+  }
+
+  function submitUtangTx(customerId){
+    const c = utangCustomers.find(c=>c.id === customerId);
+    if(!c) return;
+    const amount = parseFloat(document.getElementById('utang-tx-amount').value);
+    const note = document.getElementById('utang-tx-note').value.trim();
+    if(!amount || amount <= 0){ toast('Ilagay ang tamang amount.'); return; }
+
+    const txId = 'utx_'+Date.now();
+    const txRecord = {
+      id: txId, customerId, customerName: c.name,
+      type: utangOpenActionType, amount, note,
+      timestamp: new Date().toISOString()
+    };
+    utangTx.push(txRecord);
+    saveUtangTx();
+    toast((utangOpenActionType === 'charge' ? 'Idinagdag na utang: ' : 'Bayad na natanggap: ') + PESO(amount));
+    utangOpenActionId = null; utangOpenActionType = null;
+    renderUtang();
+    if(typeof renderDashboard === 'function') renderDashboard();
+
+    if(fbReady){
+      const {id:_tid, ...txData} = txRecord;
+      fbDb.collection('utangTx').doc(txId).set(txData).catch(err=>toast('Sync error: '+err.message));
+    }
+  }
+
+  function toggleUtangHistory(id){
+    utangOpenHistoryId = (utangOpenHistoryId === id) ? null : id;
+    utangOpenActionId = null; utangOpenActionType = null;
+    renderUtang();
+  }
+
+  function renderUtang(){
+    const totalStat = document.getElementById('utang-total-stat');
+    const tbody = document.getElementById('utang-customers-tbody');
+    if(!tbody) return;
+
+    const totalOwed = utangCustomers.reduce((a,c)=>a+Math.max(utangBalance(c.id),0), 0);
+    const customersWithBalance = utangCustomers.filter(c=>utangBalance(c.id) > 0).length;
+    if(totalStat){
+      totalStat.innerHTML = `
+        <div class="stat" style="background:var(--danger);"><div class="label">Total Utang Owed</div><div class="val">${PESO(totalOwed)}</div></div>
+        <div class="stat" style="background:var(--purple);"><div class="label">Customers May Utang</div><div class="val">${customersWithBalance}</div></div>
+      `;
+    }
+
+    const q = document.getElementById('utang-search') ? document.getElementById('utang-search').value.trim() : '';
+    const list = utangCustomers.filter(c=>fuzzyMatch(c.name, q))
+                                .sort((a,b)=>utangBalance(b.id) - utangBalance(a.id) || a.name.localeCompare(b.name));
+
+    if(list.length === 0){
+      const msg = q ? `Walang customer na tumutugma sa "${q}".` : 'Wala pang customer. Magdagdag sa itaas.';
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="4">${msg}</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = list.map(c=>{
+      const bal = utangBalance(c.id);
+      const balClass = bal > 0.004 ? 'owed' : 'clear';
+      let extraRow = '';
+
+      if(utangOpenActionId === c.id){
+        const label = utangOpenActionType === 'charge' ? 'Magdagdag ng Utang' : 'Magdagdag ng Bayad';
+        const btnClass = utangOpenActionType === 'charge' ? 'red' : '';
+        extraRow = `
+          <tr><td colspan="4">
+            <div class="utang-inline">
+              <div style="font-family:'Bangers',cursive; font-size:15px; margin-bottom:8px;">${label} — ${escapeHtml(c.name)}</div>
+              <div class="form-grid">
+                <div class="field">
+                  <label>Amount (₱)</label>
+                  <input type="number" id="utang-tx-amount" min="0" step="0.01">
+                </div>
+                <div class="field">
+                  <label>Note (optional)</label>
+                  <input type="text" id="utang-tx-note" placeholder="hal. 3 Coke, 1 tinapay">
+                </div>
+              </div>
+              <div class="row-actions">
+                <button class="btn ${btnClass}" onclick="TindahanPOS.submitUtangTx('${c.id}')">Save</button>
+                <button class="btn outline" onclick="TindahanPOS.cancelUtangAction()">Cancel</button>
+              </div>
+            </div>
+          </td></tr>`;
+      }
+
+      if(utangOpenHistoryId === c.id){
+        const custTx = utangTx.filter(t=>t.customerId === c.id).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+        const historyHtml = custTx.length === 0
+          ? '<div style="color:var(--muted); font-style:italic; font-size:12.5px;">Wala pang transaksyon.</div>'
+          : custTx.map(t=>{
+              const dt = new Date(t.timestamp).toLocaleDateString('en-PH', {month:'short', day:'numeric', year:'numeric'});
+              const label = t.type === 'charge' ? 'Utang' : 'Bayad';
+              const color = t.type === 'charge' ? 'var(--danger)' : 'var(--green)';
+              const sign = t.type === 'charge' ? '+' : '-';
+              return `<div class="utang-history-item">
+                <span>${dt} — ${label}${t.note ? ' (' + escapeHtml(t.note) + ')' : ''}</span>
+                <span style="color:${color}; font-weight:700;">${sign}${PESO(t.amount)}</span>
+              </div>`;
+            }).join('');
+        extraRow = `<tr><td colspan="4"><div class="utang-inline">${historyHtml}</div></td></tr>`;
+      }
+
+      return `<tr>
+        <td class="pname">${escapeHtml(c.name)}</td>
+        <td class="mono">${escapeHtml(c.phone||'—')}</td>
+        <td class="num utang-balance ${balClass}">${PESO(bal)}</td>
+        <td class="no-print">
+          <div class="utang-actions">
+            <button class="btn small red" onclick="TindahanPOS.toggleUtangAction('${c.id}','charge')">+ Utang</button>
+            <button class="btn small" onclick="TindahanPOS.toggleUtangAction('${c.id}','payment')">+ Bayad</button>
+            <button class="btn small outline" onclick="TindahanPOS.toggleUtangHistory('${c.id}')">History</button>
+            <button class="btn small outline" onclick="TindahanPOS.editUtangCustomer('${c.id}')">Edit</button>
+            <button class="btn small red" onclick="TindahanPOS.deleteUtangCustomer('${c.id}')">Delete</button>
+          </div>
+        </td>
+      </tr>${extraRow}`;
+    }).join('');
+  }
+  const utangSearchInput = document.getElementById('utang-search');
+  if(utangSearchInput) utangSearchInput.addEventListener('input', renderUtang);
 
   function escapeHtml(s){
     return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -2064,18 +2401,39 @@
     if(isNaN(received)){
       resultEl.textContent = 'Sukli: ₱0.00';
       resultEl.classList.remove('short');
-      return;
-    }
-    const change = received - total;
-    if(change < 0){
-      resultEl.textContent = 'Kulang ng ' + PESO(Math.abs(change));
-      resultEl.classList.add('short');
     } else {
-      resultEl.textContent = 'Sukli: ' + PESO(change);
-      resultEl.classList.remove('short');
+      const change = received - total;
+      if(change < 0){
+        resultEl.textContent = 'Kulang ng ' + PESO(Math.abs(change));
+        resultEl.classList.add('short');
+      } else {
+        resultEl.textContent = 'Sukli: ' + PESO(change);
+        resultEl.classList.remove('short');
+      }
     }
+    const utangPreview = document.getElementById('utang-charge-preview');
+    if(utangPreview) utangPreview.textContent = 'Ida-charge: ' + PESO(total);
   }
   document.getElementById('amount-received').addEventListener('input', updateSukli);
+
+  // ---------- payment method (cash vs utang) ----------
+  const paymentMethodSelect = document.getElementById('payment-method-select');
+  function populateUtangCustomerSelect(){
+    const sel = document.getElementById('checkout-utang-customer');
+    if(!sel) return;
+    if(utangCustomers.length === 0){
+      sel.innerHTML = '<option value="">Wala pang customer — magdagdag sa Utang tab</option>';
+    } else {
+      sel.innerHTML = [...utangCustomers].sort((a,b)=>a.name.localeCompare(b.name))
+        .map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+    }
+  }
+  paymentMethodSelect.addEventListener('change', ()=>{
+    const isUtang = paymentMethodSelect.value === 'utang';
+    document.getElementById('cash-payment-box').style.display = isUtang ? 'none' : 'flex';
+    document.getElementById('utang-payment-box').style.display = isUtang ? 'flex' : 'none';
+    if(isUtang) populateUtangCustomerSelect();
+  });
 
   function removeCartItem(idx){
     cart.splice(idx, 1);
@@ -2088,6 +2446,10 @@
     if(cart.length === 0) return;
     if(!confirm('I-clear ang buong cart?')) return;
     cart = [];
+    document.getElementById('amount-received').value = '';
+    paymentMethodSelect.value = 'cash';
+    document.getElementById('cash-payment-box').style.display = 'flex';
+    document.getElementById('utang-payment-box').style.display = 'none';
     renderCart();
     renderSellSuggestions();
     updateSellSummary();
@@ -2105,8 +2467,17 @@
       }
     }
 
+    const paymentMethod = paymentMethodSelect.value;
+    let utangCustomerId = null, utangCustomerObj = null;
+    if(paymentMethod === 'utang'){
+      utangCustomerId = document.getElementById('checkout-utang-customer').value;
+      utangCustomerObj = utangCustomers.find(c=>c.id === utangCustomerId);
+      if(!utangCustomerObj){ toast('Pumili muna ng customer para sa utang.'); return; }
+    }
+
     let totalItems = 0, totalRevenue = 0;
     const newSales = [];
+    const itemSummaryParts = [];
     cart.forEach(c=>{
       const p = products.find(p=>p.id === c.productId);
       p.qty -= c.qty;
@@ -2120,30 +2491,50 @@
         unitCost: c.unitCost,
         revenue: c.unitPrice * c.qty,
         profit: (c.unitPrice - c.unitCost) * c.qty,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        paymentMethod: paymentMethod
       };
       sales.push(saleRecord);
       newSales.push({productId: p.id, newQty: p.qty, saleId, saleRecord});
       totalItems += c.qty;
       totalRevenue += c.unitPrice * c.qty;
+      itemSummaryParts.push(`${c.qty} ${c.name}`);
     });
 
     saveProducts();
     saveSales();
-    ewalletBalances.cash = (ewalletBalances.cash||0) + totalRevenue;
-    saveEwalletBalances();
 
-    toast(`Nabenta: ${totalItems} items — ${PESO(totalRevenue)} total`);
+    let utangTxRecord = null;
+    if(paymentMethod === 'utang'){
+      const txId = 'utx_'+Date.now();
+      utangTxRecord = {
+        id: txId, customerId: utangCustomerId, customerName: utangCustomerObj.name,
+        type: 'charge', amount: totalRevenue, note: itemSummaryParts.join(', '),
+        timestamp: new Date().toISOString()
+      };
+      utangTx.push(utangTxRecord);
+      saveUtangTx();
+      toast(`Nabenta: ${totalItems} items — ${PESO(totalRevenue)} sa utang ni ${utangCustomerObj.name}`);
+    } else {
+      ewalletBalances.cash = (ewalletBalances.cash||0) + totalRevenue;
+      saveEwalletBalances();
+      toast(`Nabenta: ${totalItems} items — ${PESO(totalRevenue)} total`);
+    }
+
     cart = [];
     document.getElementById('amount-received').value = '';
+    paymentMethodSelect.value = 'cash';
+    document.getElementById('cash-payment-box').style.display = 'flex';
+    document.getElementById('utang-payment-box').style.display = 'none';
     renderProducts();
     renderSellSuggestions();
     updateSellSummary();
     renderCart();
     if(typeof renderSalesTrend === 'function') renderSalesTrend();
     if(typeof renderDailyClosing === 'function') renderDailyClosing();
-      if(typeof renderDashboard === 'function') renderDashboard();
+    if(typeof renderDashboard === 'function') renderDashboard();
     if(typeof renderEwalletBalances === 'function') renderEwalletBalances();
+    if(typeof renderUtang === 'function') renderUtang();
 
     if(fbReady){
       newSales.forEach(({productId, newQty, saleId, saleRecord})=>{
@@ -2151,7 +2542,12 @@
         const {id: _sid, ...saleData} = saleRecord;
         fbDb.collection('sales').doc(saleId).set(saleData).catch(err=>toast('Sync error: '+err.message));
       });
-      fbDb.collection('meta').doc('ewalletBalances').set(ewalletBalances, {merge:true}).catch(err=>toast('Sync error: '+err.message));
+      if(paymentMethod === 'utang' && utangTxRecord){
+        const {id:_utid, ...utxData} = utangTxRecord;
+        fbDb.collection('utangTx').doc(utangTxRecord.id).set(utxData).catch(err=>toast('Sync error: '+err.message));
+      } else {
+        fbDb.collection('meta').doc('ewalletBalances').set(ewalletBalances, {merge:true}).catch(err=>toast('Sync error: '+err.message));
+      }
     }
   });
 
@@ -2262,6 +2658,9 @@
     const todayItems = todaySales.reduce((a,s)=>a+s.qty, 0);
     const lowStockCount = products.filter(p=>p.qty <= LOW_STOCK_THRESHOLD).length;
     const restockCount = products.filter(p=>p.restockFlagged).length;
+    const totalUtangOwed = (typeof utangCustomers !== 'undefined')
+      ? utangCustomers.reduce((a,c)=>a+Math.max(utangTx.filter(t=>t.customerId===c.id).reduce((s,t)=>s+(t.type==='charge'?t.amount:-t.amount),0), 0), 0)
+      : 0;
 
     grid.innerHTML = `
       <div class="dstat" style="background:var(--blue);"><div class="label">Today's Sales</div><div class="val">${PESO(todayRevenue)}</div></div>
@@ -2272,6 +2671,7 @@
       <div class="dstat" style="background:var(--green);"><div class="label">Maribank Balance</div><div class="val">${PESO(ewalletBalances.maribank||0)}</div></div>
       <div class="dstat" style="background:var(--red);"><div class="label">Low Stock Items</div><div class="val">${lowStockCount}</div></div>
       <div class="dstat" style="background:var(--red-dark);"><div class="label">Restock List</div><div class="val">${restockCount}</div></div>
+      <div class="dstat" style="background:var(--danger);"><div class="label">Total Utang Owed</div><div class="val">${PESO(totalUtangOwed)}</div></div>
     `;
   }
 
@@ -2544,7 +2944,6 @@
     const byQtyDesc = [...rows].sort((a,b)=>b[1].qty - a[1].qty);
     const topSellers = byQtyDesc.slice(0,5);
     const slowSellers = [...byQtyDesc].reverse().slice(0,5);
-    const noSaleProducts = products.filter(p=>!byProduct[p.name]).sort((a,b)=>a.name.localeCompare(b.name));
 
     const totalRevenue = rangeSales.reduce((a,s)=>a+s.revenue,0);
     const totalProfit = rangeSales.reduce((a,s)=>a+s.profit,0);
@@ -2591,10 +2990,6 @@
           <thead><tr><th>Produkto</th><th class="num">Qty Naibenta</th></tr></thead>
           <tbody>${sellerRows(slowSellers)}</tbody>
         </table>
-        ${noSaleProducts.length > 0 ? `
-        <div style="margin-top:10px; font-size:11.5px; color:var(--muted);">
-          Walang benta sa panahong ito: ${noSaleProducts.map(p=>escapeHtml(p.name)).join(', ')}
-        </div>` : ''}
       </div>` : ''}
     `;
     document.getElementById('receipt-content').innerHTML = html;
@@ -2644,7 +3039,7 @@
   });
 
   // expose for inline handlers
-  window.TindahanPOS = { editProduct, deleteProduct, startPriceEdit, cancelPriceEdit, savePriceEdit, selectSellProduct, toggleRestock, removeCartItem, quickAddToCart, addQuickShortcut, removeQuickShortcut, addToCartFromPriceCheck, startRestockEdit, cancelRestockEdit, saveRestockEdit, editSupplier, deleteSupplier };
+  window.TindahanPOS = { editProduct, deleteProduct, startPriceEdit, cancelPriceEdit, savePriceEdit, selectSellProduct, toggleRestock, removeCartItem, quickAddToCart, addQuickShortcut, removeQuickShortcut, addToCartFromPriceCheck, startRestockEdit, cancelRestockEdit, saveRestockEdit, editSupplier, deleteSupplier, editUtangCustomer, deleteUtangCustomer, toggleUtangAction, cancelUtangAction, submitUtangTx, toggleUtangHistory };
 
   // ---------- init ----------
   renderProducts();
@@ -2654,6 +3049,7 @@
   renderDailyClosing();
   renderDashboard();
   renderSuppliers();
+  renderUtang();
 
   const savedFbConfig = localStorage.getItem(LS_FB_CONFIG);
   if(savedFbConfig){
