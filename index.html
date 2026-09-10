@@ -1283,6 +1283,17 @@
     t._timer = setTimeout(()=>t.classList.remove('show'), 2200);
   }
 
+  const DELETE_PASSWORD = 'Password2026';
+  function confirmDeletePassword(){
+    const entered = prompt('Ilagay ang password para magpatuloy sa pagbura:');
+    if(entered === null) return false; // user cancelled
+    if(entered !== DELETE_PASSWORD){
+      toast('Mali ang password. Hindi natuloy ang pagbura.');
+      return false;
+    }
+    return true;
+  }
+
   function todayStr(d){
     const dt = d ? new Date(d) : new Date();
     return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
@@ -1606,6 +1617,7 @@
     const p = products.find(p=>p.id === id);
     if(!p) return;
     if(!confirm('Sigurado ka bang burahin ang "'+p.name+'"?')) return;
+    if(!confirmDeletePassword()) return;
     products = products.filter(p=>p.id !== id);
     saveProducts();
     renderProducts();
@@ -1859,6 +1871,7 @@
     const s = suppliers.find(s=>s.id === id);
     if(!s) return;
     if(!confirm('Sigurado ka bang burahin ang "'+s.name+'"?')) return;
+    if(!confirmDeletePassword()) return;
     suppliers = suppliers.filter(s=>s.id !== id);
     saveSuppliers();
     renderSuppliers();
@@ -1965,6 +1978,7 @@
     const bal = utangBalance(id);
     const warn = bal > 0 ? ` May utang pa siyang ${PESO(bal)}.` : '';
     if(!confirm('Sigurado ka bang burahin ang "'+c.name+'"?' + warn)) return;
+    if(!confirmDeletePassword()) return;
     utangCustomers = utangCustomers.filter(c=>c.id !== id);
     saveUtangCustomers();
     renderUtang();
@@ -2129,14 +2143,22 @@
     }
   });
 
-  function removeNote(id){
+  function removeNoteInternal(id){
     const n = productNotes.find(n=>n.id === id);
     if(!n) return;
     productNotes = productNotes.filter(n=>n.id !== id);
     saveNotes();
     renderNotes();
-    toast('Inalis sa Notes: ' + n.itemName);
     if(fbReady) fbDb.collection('productNotes').doc(id).delete().catch(err=>toast('Sync error: '+err.message));
+    return n;
+  }
+
+  function removeNote(id){
+    const n = productNotes.find(n=>n.id === id);
+    if(!n) return;
+    if(!confirmDeletePassword()) return;
+    removeNoteInternal(id);
+    toast('Inalis sa Notes: ' + n.itemName);
   }
 
   function addNoteToInventory(id){
@@ -2146,7 +2168,7 @@
     resetForm();
     fName.value = n.itemName;
     fWholesale.focus();
-    removeNote(id);
+    removeNoteInternal(id);
     toast('I-fill up na lang ang detalye ni ' + n.itemName + '.');
   }
 
@@ -3140,6 +3162,7 @@
         const data = JSON.parse(evt.target.result);
         if(!Array.isArray(data.products) || !Array.isArray(data.sales)) throw new Error('bad format');
         if(!confirm('Papalitan nito ang kasalukuyang data. Magpatuloy?')) return;
+        if(!confirmDeletePassword()) return;
         products = data.products;
         sales = data.sales;
         saveProducts(); saveSales();
