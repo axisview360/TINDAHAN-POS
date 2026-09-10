@@ -256,6 +256,18 @@
   .utang-balance.owed{color:var(--danger); font-weight:700;}
   .utang-balance.clear{color:var(--green); font-weight:700;}
 
+  /* ---- notes / wishlist ---- */
+  .note-card{
+    display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;
+    background:var(--paper); border:3px solid var(--ink); border-radius:14px 14px 14px 4px;
+    padding:12px 16px; margin-bottom:10px; box-shadow:3px 3px 0 var(--ink);
+  }
+  .note-card .note-info{flex:1; min-width:180px;}
+  .note-card .note-item{font-weight:700; font-size:14.5px;}
+  .note-card .note-text{font-size:12px; color:var(--muted); margin-top:2px;}
+  .note-card .note-date{font-size:10.5px; color:var(--muted-light); margin-top:2px; font-family:'Space Mono',monospace;}
+  .note-card .note-actions{display:flex; gap:6px; flex-wrap:wrap;}
+
   /* ---- starburst low-stock badge ---- */
   .stock-badge{
     display:inline-block; margin-left:6px; padding:2px 9px;
@@ -549,6 +561,7 @@
   <button data-view="lowstock">Mababang Stock</button>
   <button data-view="restocklist">Restock List</button>
   <button data-view="suppliers">Suppliers</button>
+  <button data-view="notes">Notes</button>
   <button data-view="trend">Sales Trend</button>
   <button data-view="sync">Firebase Sync</button>
 </nav>
@@ -989,6 +1002,34 @@
     </div>
   </section>
 
+  <!-- NOTES / WISHLIST VIEW -->
+  <section class="view" id="view-notes">
+    <div class="panel">
+      <h2>Magdagdag ng Note</h2>
+      <p class="sync-help">Para sa mga hinahanap ng customer na wala ka pang stock. I-note dito, tapos i-add sa Imbentaryo kapag available na.</p>
+      <form id="note-form">
+        <div class="form-grid">
+          <div class="field">
+            <label>Pangalan ng Produkto</label>
+            <input type="text" id="note-item-name" required autocomplete="off" placeholder="hal. Squishy Toy">
+          </div>
+          <div class="field">
+            <label>Note (optional)</label>
+            <input type="text" id="note-text" autocomplete="off" placeholder="hal. hiningi ni Aling Nena, red color">
+          </div>
+        </div>
+        <div class="row-actions">
+          <button type="submit" class="btn">Idagdag sa Note</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h2>Mga Note</h2>
+      <div id="notes-list"></div>
+    </div>
+  </section>
+
   <!-- SALES TREND VIEW -->
   <section class="view" id="view-trend">
     <div class="panel">
@@ -1174,6 +1215,7 @@
   const LS_SUPPLIERS = 'tindahanPOS_suppliers';
   const LS_UTANG_CUSTOMERS = 'tindahanPOS_utangCustomers';
   const LS_UTANG_TX = 'tindahanPOS_utangTx';
+  const LS_NOTES = 'tindahanPOS_productNotes';
   const PESO = n => '₱' + Number(n).toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2});
   let LOW_STOCK_THRESHOLD = parseInt(localStorage.getItem(LS_THRESHOLD), 10) || 5;
 
@@ -1220,7 +1262,8 @@
   let suppliers = JSON.parse(localStorage.getItem(LS_SUPPLIERS) || '[]');
   let utangCustomers = JSON.parse(localStorage.getItem(LS_UTANG_CUSTOMERS) || '[]');
   let utangTx = JSON.parse(localStorage.getItem(LS_UTANG_TX) || '[]');
-  let fbDb = null, fbReady = false, unsubProducts = null, unsubSales = null, unsubEwalletBal = null, unsubEwalletTx = null, unsubClosings = null, unsubSuppliers = null, unsubUtangCustomers = null, unsubUtangTx = null;
+  let productNotes = JSON.parse(localStorage.getItem(LS_NOTES) || '[]');
+  let fbDb = null, fbReady = false, unsubProducts = null, unsubSales = null, unsubEwalletBal = null, unsubEwalletTx = null, unsubClosings = null, unsubSuppliers = null, unsubUtangCustomers = null, unsubUtangTx = null, unsubNotes = null;
 
   function saveProducts(){ localStorage.setItem(LS_PRODUCTS, JSON.stringify(products)); }
   function saveSales(){ localStorage.setItem(LS_SALES, JSON.stringify(sales)); }
@@ -1230,6 +1273,7 @@
   function saveSuppliers(){ localStorage.setItem(LS_SUPPLIERS, JSON.stringify(suppliers)); }
   function saveUtangCustomers(){ localStorage.setItem(LS_UTANG_CUSTOMERS, JSON.stringify(utangCustomers)); }
   function saveUtangTx(){ localStorage.setItem(LS_UTANG_TX, JSON.stringify(utangTx)); }
+  function saveNotes(){ localStorage.setItem(LS_NOTES, JSON.stringify(productNotes)); }
 
   function toast(msg){
     const t = document.getElementById('toast');
@@ -1268,6 +1312,7 @@
     if(unsubSuppliers) unsubSuppliers();
     if(unsubUtangCustomers) unsubUtangCustomers();
     if(unsubUtangTx) unsubUtangTx();
+    if(unsubNotes) unsubNotes();
     unsubProducts = fbDb.collection('products').onSnapshot(snap=>{
       products = snap.docs.map(d=>({id:d.id, ...d.data()}));
       saveProducts();
@@ -1317,6 +1362,11 @@
       saveUtangTx();
       if(typeof renderUtang === 'function') renderUtang();
     }, ()=> setSyncStatus('err','Sync error (utang tx)'));
+    unsubNotes = fbDb.collection('productNotes').onSnapshot(snap=>{
+      productNotes = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      saveNotes();
+      if(typeof renderNotes === 'function') renderNotes();
+    }, ()=> setSyncStatus('err','Sync error (notes)'));
   }
 
   function connectFirebase(config, silent){
@@ -1430,6 +1480,7 @@
     if(viewName === 'trend') renderSalesTrend();
     if(viewName === 'ewallet') renderEwallet();
     if(viewName === 'utang') renderUtang();
+    if(viewName === 'notes') renderNotes();
     if(viewName === 'closing') renderDailyClosing();
     closeMenu();
   }
@@ -2057,6 +2108,71 @@
   }
   const utangSearchInput = document.getElementById('utang-search');
   if(utangSearchInput) utangSearchInput.addEventListener('input', renderUtang);
+
+  // ---------- notes / wishlist ----------
+  const noteForm = document.getElementById('note-form');
+  noteForm.addEventListener('submit', e=>{
+    e.preventDefault();
+    const itemName = document.getElementById('note-item-name').value.trim();
+    const noteText = document.getElementById('note-text').value.trim();
+    if(!itemName){ toast('Ilagay ang pangalan ng produkto.'); return; }
+    const noteId = 'note_'+Date.now();
+    const record = { id: noteId, itemName, note: noteText, timestamp: new Date().toISOString() };
+    productNotes.push(record);
+    saveNotes();
+    toast('Naidagdag sa Notes: ' + itemName);
+    noteForm.reset();
+    renderNotes();
+    if(fbReady){
+      const {id:_nid, ...noteData} = record;
+      fbDb.collection('productNotes').doc(noteId).set(noteData).catch(err=>toast('Sync error: '+err.message));
+    }
+  });
+
+  function removeNote(id){
+    const n = productNotes.find(n=>n.id === id);
+    if(!n) return;
+    productNotes = productNotes.filter(n=>n.id !== id);
+    saveNotes();
+    renderNotes();
+    toast('Inalis sa Notes: ' + n.itemName);
+    if(fbReady) fbDb.collection('productNotes').doc(id).delete().catch(err=>toast('Sync error: '+err.message));
+  }
+
+  function addNoteToInventory(id){
+    const n = productNotes.find(n=>n.id === id);
+    if(!n) return;
+    activateView('products');
+    resetForm();
+    fName.value = n.itemName;
+    fWholesale.focus();
+    removeNote(id);
+    toast('I-fill up na lang ang detalye ni ' + n.itemName + '.');
+  }
+
+  function renderNotes(){
+    const list = document.getElementById('notes-list');
+    if(!list) return;
+    if(productNotes.length === 0){
+      list.innerHTML = '<div class="quick-add-empty">Wala pang note. Magdagdag sa itaas kapag may hinahanap na customer na wala kang stock.</div>';
+      return;
+    }
+    const sorted = [...productNotes].sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+    list.innerHTML = sorted.map(n=>{
+      const dt = new Date(n.timestamp).toLocaleDateString('en-PH', {month:'short', day:'numeric', year:'numeric'});
+      return `<div class="note-card">
+        <div class="note-info">
+          <div class="note-item">${escapeHtml(n.itemName)}</div>
+          ${n.note ? `<div class="note-text">${escapeHtml(n.note)}</div>` : ''}
+          <div class="note-date">${dt}</div>
+        </div>
+        <div class="note-actions">
+          <button class="btn small" onclick="TindahanPOS.addNoteToInventory('${n.id}')">+ Idagdag sa Imbentaryo</button>
+          <button class="btn small red" onclick="TindahanPOS.removeNote('${n.id}')">Alisin</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
 
   function escapeHtml(s){
     return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -3039,7 +3155,7 @@
   });
 
   // expose for inline handlers
-  window.TindahanPOS = { editProduct, deleteProduct, startPriceEdit, cancelPriceEdit, savePriceEdit, selectSellProduct, toggleRestock, removeCartItem, quickAddToCart, addQuickShortcut, removeQuickShortcut, addToCartFromPriceCheck, startRestockEdit, cancelRestockEdit, saveRestockEdit, editSupplier, deleteSupplier, editUtangCustomer, deleteUtangCustomer, toggleUtangAction, cancelUtangAction, submitUtangTx, toggleUtangHistory };
+  window.TindahanPOS = { editProduct, deleteProduct, startPriceEdit, cancelPriceEdit, savePriceEdit, selectSellProduct, toggleRestock, removeCartItem, quickAddToCart, addQuickShortcut, removeQuickShortcut, addToCartFromPriceCheck, startRestockEdit, cancelRestockEdit, saveRestockEdit, editSupplier, deleteSupplier, editUtangCustomer, deleteUtangCustomer, toggleUtangAction, cancelUtangAction, submitUtangTx, toggleUtangHistory, removeNote, addNoteToInventory };
 
   // ---------- init ----------
   renderProducts();
@@ -3050,6 +3166,7 @@
   renderDashboard();
   renderSuppliers();
   renderUtang();
+  renderNotes();
 
   const savedFbConfig = localStorage.getItem(LS_FB_CONFIG);
   if(savedFbConfig){
