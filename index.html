@@ -2445,7 +2445,13 @@
     document.getElementById('sell-qty').focus();
   }
 
-  document.getElementById('sell-qty').addEventListener('input', updateSellSummary);
+  const sellQtyInput = document.getElementById('sell-qty');
+  sellQtyInput.addEventListener('input', updateSellSummary);
+  sellQtyInput.addEventListener('focus', function(){ this.value = ''; });
+  sellQtyInput.addEventListener('blur', function(){
+    if(this.value === '' || parseInt(this.value,10) < 1) this.value = 1;
+    updateSellSummary();
+  });
 
   function updateSellSummary(){
     const p = products.find(p=>p.id === sellSelectedId);
@@ -2461,7 +2467,7 @@
       Available stock: ${avail}${cartQtyFor(p.id) > 0 ? ' (may '+cartQtyFor(p.id)+' na sa cart)' : ''}`;
   }
 
-  document.getElementById('sell-btn').addEventListener('click', ()=>{
+  function addToCartFromSearch(){
     const p = products.find(p=>p.id === sellSelectedId);
     const qty = parseInt(document.getElementById('sell-qty').value, 10);
     if(!p){ toast('Pumili muna ng produkto.'); return; }
@@ -2488,7 +2494,26 @@
     updateSellSummary();
     renderSellSuggestions();
     renderCart();
-  });
+    sellSearchInput.focus();
+  }
+
+  document.getElementById('sell-btn').addEventListener('click', addToCartFromSearch);
+
+  function handleSellEnterKey(e){
+    if(e.key !== 'Enter') return;
+    e.preventDefault();
+    if(!sellSelectedId){
+      const q = sellSearchInput.value.trim();
+      if(q){
+        const match = products.filter(p=>availableStock(p) > 0 && fuzzyMatch(p.name, q))
+                               .sort((a,b)=>a.name.localeCompare(b.name))[0];
+        if(match) sellSelectedId = match.id;
+      }
+    }
+    addToCartFromSearch();
+  }
+  sellSearchInput.addEventListener('keydown', handleSellEnterKey);
+  sellQtyInput.addEventListener('keydown', handleSellEnterKey);
 
   function renderCart(){
     const tbody = document.getElementById('cart-tbody');
