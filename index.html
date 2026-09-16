@@ -1680,7 +1680,15 @@
     renderLowStock();
     renderRestockList();
   }
-  document.getElementById('product-search').addEventListener('input', renderProducts);
+  document.getElementById('product-search').addEventListener('input', ()=>{
+    if(selectedLetter !== 'all'){
+      selectedLetter = 'all';
+      document.querySelectorAll('.alpha-btn').forEach(b=>b.classList.remove('active'));
+      const allBtn = document.querySelector('.alpha-btn[data-letter="all"]');
+      if(allBtn) allBtn.classList.add('active');
+    }
+    renderProducts();
+  });
 
   // ---------- low stock ----------
   const lowstockThresholdInput = document.getElementById('lowstock-threshold');
