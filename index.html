@@ -1238,19 +1238,30 @@
     return prev[n];
   }
 
-  function fuzzyMatch(name, query){
-    if(!query) return true;
-    name = name.toLowerCase();
-    query = query.toLowerCase().trim();
-    if(!query) return true;
-    if(name.includes(query)) return true;
-    const threshold = query.length <= 3 ? 1 : (query.length <= 6 ? 2 : 3);
-    const words = name.split(/\s+/);
+  function matchScore(name, query){
+    if(!query) return 0;
+    const n = name.toLowerCase();
+    const q = query.toLowerCase().trim();
+    if(!q) return 0;
+    const words = n.split(/\s+/);
+    if(words.includes(q)) return 0;              // exact whole-word match
+    if(n.startsWith(q)) return 1;                 // name starts with the query
+    if(words.some(w=>w.startsWith(q))) return 2;  // some word starts with the query
+    if(n.includes(q)) return 3;                   // query found anywhere as a substring
+    // typo tolerance — deliberately strict so short words don't false-match unrelated words
+    const threshold = q.length <= 3 ? 0 : (q.length <= 5 ? 1 : (q.length <= 8 ? 2 : 3));
+    let best = Infinity;
     for(const w of words){
-      if(levenshtein(w, query) <= threshold) return true;
+      const d = levenshtein(w, q);
+      if(d <= threshold) best = Math.min(best, 10 + d);
     }
-    if(levenshtein(name, query) <= threshold + 1) return true;
-    return false;
+    const dWhole = levenshtein(n, q);
+    if(dWhole <= threshold + 1) best = Math.min(best, 20 + dWhole);
+    return best;
+  }
+
+  function fuzzyMatch(name, query){
+    return matchScore(name, query) !== Infinity;
   }
 
   let products = JSON.parse(localStorage.getItem(LS_PRODUCTS) || '[]');
@@ -1649,7 +1660,7 @@
         list = list.filter(p=>p.name.toUpperCase().startsWith(selectedLetter));
       }
     }
-    list = list.sort((a,b)=>a.name.localeCompare(b.name));
+    list = list.sort((a,b)=>matchScore(a.name,q) - matchScore(b.name,q) || a.name.localeCompare(b.name));
     if(list.length === 0){
       const msg = selectedLetter !== 'all' ? `Walang produktong nagsisimula sa "${selectedLetter}".` : 'Walang produkto.';
       tbody.innerHTML = `<tr class="empty-row"><td colspan="7">${msg}</td></tr>`;
@@ -1893,7 +1904,7 @@
     const searchInput = document.getElementById('supplier-search');
     const q = searchInput ? searchInput.value.trim() : '';
     const list = suppliers.filter(s=>fuzzyMatch(s.name, q) || fuzzyMatch(s.contact||'', q))
-                           .sort((a,b)=>a.name.localeCompare(b.name));
+                           .sort((a,b)=>Math.min(matchScore(a.name,q),matchScore(a.contact||'',q)) - Math.min(matchScore(b.name,q),matchScore(b.contact||'',q)) || a.name.localeCompare(b.name));
     if(list.length === 0){
       const msg = q ? `Walang supplier na tumutugma sa "${q}".` : 'Wala pang supplier. Magdagdag sa itaas.';
       tbody.innerHTML = `<tr class="empty-row"><td colspan="6">${msg}</td></tr>`;
@@ -2216,7 +2227,9 @@
   function renderPriceCheck(){
     const q = pcInput.value.trim().toLowerCase();
     if(!q){ pcResults.innerHTML=''; return; }
-    const matches = products.filter(p=>fuzzyMatch(p.name, q)).slice(0,6);
+    const matches = products.filter(p=>fuzzyMatch(p.name, q))
+                             .sort((a,b)=>matchScore(a.name,q) - matchScore(b.name,q) || a.name.localeCompare(b.name))
+                             .slice(0,6);
     if(matches.length === 0){
       pcResults.innerHTML = '<div class="price-card">Walang nahanap na produkto.</div>';
       return;
@@ -2368,7 +2381,7 @@
     const listEl = document.getElementById('quick-picker-list');
     const q = quickPickerSearch.value.trim().toLowerCase();
     const candidates = products.filter(p=>!p.quickSell && fuzzyMatch(p.name, q))
-                                .sort((a,b)=>a.name.localeCompare(b.name));
+                                .sort((a,b)=>matchScore(a.name,q) - matchScore(b.name,q) || a.name.localeCompare(b.name));
     if(candidates.length === 0){
       listEl.innerHTML = '<div class="quick-add-empty">Wala nang produktong maidadagdag.</div>';
       return;
@@ -2424,7 +2437,7 @@
     renderQuickAddGrid();
     if(!q){ sellSuggestions.classList.remove('show'); sellSuggestions.innerHTML=''; return; }
     const matches = products.filter(p=>availableStock(p) > 0 && fuzzyMatch(p.name, q))
-                             .sort((a,b)=>a.name.localeCompare(b.name)).slice(0,8);
+                             .sort((a,b)=>matchScore(a.name,q) - matchScore(b.name,q) || a.name.localeCompare(b.name)).slice(0,8);
     if(matches.length === 0){
       sellSuggestions.innerHTML = '<div class="sell-suggestion-empty">Walang stock na tugma.</div>';
     } else {
@@ -2514,7 +2527,7 @@
       const q = sellSearchInput.value.trim();
       if(q){
         const match = products.filter(p=>availableStock(p) > 0 && fuzzyMatch(p.name, q))
-                               .sort((a,b)=>a.name.localeCompare(b.name))[0];
+                               .sort((a,b)=>matchScore(a.name,q) - matchScore(b.name,q) || a.name.localeCompare(b.name))[0];
         if(match) sellSelectedId = match.id;
       }
     }
